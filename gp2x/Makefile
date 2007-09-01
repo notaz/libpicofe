@@ -48,9 +48,12 @@ LD = $(CROSS)ld
 OBJCOPY = $(CROSS)objcopy
 
 # frontend
-OBJS += main.o menu.o fonts.o gp2x.o usbjoy.o emu.o squidgehack.o asmutils.o cpuctrl.o readpng.o
+OBJS += main.o menu.o gp2x.o usbjoy.o emu.o squidgehack.o cpuctrl.o
 # 940 core control
 OBJS += 940ctl.o
+
+# common
+OBJS += ../common/menu.o ../common/fonts.o ../common/arm_utils.o ../common/readpng.o
 
 # Pico
 ifeq "$(amalgamate)" "1"
@@ -148,7 +151,7 @@ up: PicoDrive.gpe
 #	@cmd //C copy PicoDrive.gpe \\\\10.0.1.2\\gp2x\\mnt\\sd\\games\\PicoDrive\\
 
 
-testrefr.gpe : test.o gp2x.o asmutils.o
+testrefr.gpe : test.o gp2x.o
 	@echo $@
 	@$(GCC) $(COPT) $^ -o $@
 	@$(STRIP) $@
