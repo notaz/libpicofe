@@ -6,7 +6,7 @@
 #include <dsound.h>
 
 #include "dsnd.h"
-#include "../common/lprintf.h"
+#include "../lprintf.h"
 
 #define NSEGS 4
 #define RELEASE(x) if (x) x->Release();  x=NULL;

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "soc.h"
-#include "../common/emu.h"
+#include "../emu.h"
 
 extern void *gp2x_screens[4];
 

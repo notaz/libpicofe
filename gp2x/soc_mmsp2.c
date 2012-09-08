@@ -11,9 +11,9 @@
 #include "soc.h"
 #include "soc_mmsp2.h"
 #include "plat_gp2x.h"
-#include "../common/emu.h"
-#include "../common/plat.h"
-#include "../common/arm_utils.h"
+#include "../emu.h"
+#include "../plat.h"
+#include "../arm_utils.h"
 #include "940ctl.h"
 
 volatile unsigned short *gp2x_memregs;

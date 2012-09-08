@@ -19,7 +19,7 @@
 #include <linux/input.h>
 #include <errno.h>
 
-#include "../common/input.h"
+#include "../input.h"
 #include "in_evdev.h"
 
 #define MAX_ABS_DEVS 8

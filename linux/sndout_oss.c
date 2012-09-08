@@ -98,7 +98,7 @@ int sndout_oss_write(const void *buff, int len)
 	return write(sounddev, buff, len);
 }
 
-#include "../common/plat.h"
+#include "../plat.h"
 
 /* not really non-blocking, just detects if blocking occurs
  * and starts skipping writes in case it does. */

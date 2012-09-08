@@ -3,8 +3,8 @@
 #undef RC_INVOKED
 #include <string.h>
 
-#include "../common/input.h"
-#include "../common/emu.h" // array_size
+#include "../input.h"
+#include "../emu.h" // array_size
 #include "in_vk.h"
 
 #define IN_VK_PREFIX "vk:"

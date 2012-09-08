@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "../common/input.h"
+#include "../input.h"
 #include "in_gp2x.h"
 
 #define IN_GP2X_PREFIX "gp2x:"

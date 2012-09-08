@@ -20,9 +20,9 @@
 
 #include "soc.h"
 #include "plat_gp2x.h"
-#include "../common/emu.h"
-#include "../common/plat.h"
-#include "../common/arm_utils.h"
+#include "../emu.h"
+#include "../plat.h"
+#include "../arm_utils.h"
 #include "pollux_set.h"
 
 static volatile unsigned short *memregs;

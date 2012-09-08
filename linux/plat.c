@@ -19,7 +19,7 @@
 #include <sys/mman.h>
 #include <errno.h>
 
-#include "../common/plat.h"
+#include "../plat.h"
 
 /* XXX: maybe unhardcode pagesize? */
 #define HUGETLB_PAGESIZE (2 * 1024 * 1024)

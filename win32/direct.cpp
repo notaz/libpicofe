@@ -1,6 +1,6 @@
 // ddraw
 #include <ddraw.h>
-#include "../common/lprintf.h"
+#include "../lprintf.h"
 #include "direct.h"
 #include "main.h"
 
