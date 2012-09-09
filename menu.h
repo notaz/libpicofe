@@ -117,16 +117,9 @@ extern int g_menuscreen_w;
 extern int g_menuscreen_h;
 #endif
 
-void menu_init(void);
+void menu_init_base(void);
+void menu_update_msg(const char *msg);
 void text_out16(int x, int y, const char *texto, ...);
-void me_update_msg(const char *msg);
-
-void menu_romload_prepare(const char *rom_name);
-void menu_romload_end(void);
-
-void menu_loop(void);
-int  menu_loop_tray(void);
 
 menu_entry *me_list_get_first(void);
 menu_entry *me_list_get_next(void);
-

@@ -1,5 +1,5 @@
 /*
- * (C) Gražvydas "notaz" Ignotas, 2006-2011
+ * (C) Gražvydas "notaz" Ignotas, 2006-2012
  *
  * This work is licensed under the terms of any of these licenses
  * (at your option):
@@ -29,6 +29,7 @@ char menu_error_msg[64] = { 0, };
 void *g_menuscreen_ptr;
 void *g_menubg_src_ptr;
 void *g_menubg_ptr;
+static char rom_fname_reload[256];
 
 #if !MSCREEN_SIZE_FIXED
 int g_menuscreen_w;
@@ -47,6 +48,9 @@ static const int me_sfont_w = 12, me_sfont_h = 20;
 static const int me_mfont_w = 8, me_mfont_h = 10;
 static const int me_sfont_w = 6, me_sfont_h = 10;
 #endif
+
+static int g_border_style;
+static int border_left, border_right, border_top, border_bottom;
 
 // draws text to current bbp16 screen
 static void text_out16_(int x, int y, const char *text, int color)
@@ -106,6 +110,15 @@ static void text_out16_(int x, int y, const char *text, int color)
 		}
 		dest += me_mfont_w;
 	}
+
+	if (x < border_left)
+		border_left = x;
+	if (x + i * me_mfont_w > border_right)
+		border_right = x + i * me_mfont_w;
+	if (y < border_top)
+		border_top = y;
+	if (y + me_mfont_h > border_bottom)
+		border_bottom = y + me_mfont_h;
 }
 
 void text_out16(int x, int y, const char *texto, ...)
@@ -223,7 +236,7 @@ static char tolower_simple(char c)
 	return c;
 }
 
-void menu_init(void)
+void menu_init_base(void)
 {
 	int i, c, l;
 	unsigned char *fd, *fds;
@@ -323,18 +336,6 @@ void menu_init(void)
 	setlocale(LC_TIME, "");
 }
 
-static void menu_draw_begin(int need_bg)
-{
-	plat_video_menu_begin();
-	if (need_bg)
-		memcpy(g_menuscreen_ptr, g_menubg_ptr, g_menuscreen_w * g_menuscreen_h * 2);
-}
-
-static void menu_draw_end(void)
-{
-	plat_video_menu_end();
-}
-
 static void menu_darken_bg(void *dst, void *src, int pixels, int darker)
 {
 	unsigned int *dest = dst;
@@ -355,6 +356,88 @@ static void menu_darken_bg(void *dst, void *src, int pixels, int darker)
 			unsigned int p = *sorc++;
 			*dest++ = (p&0xf79ef79e)>>1;
 		}
+	}
+}
+
+static void menu_darken_text_bg(void)
+{
+	int x, y, xmin, xmax, ymax, ls;
+	unsigned short *screen = g_menuscreen_ptr;
+
+	xmin = border_left - 3;
+	if (xmin < 0)
+		xmin = 0;
+	xmax = border_right + 2;
+	if (xmax > g_menuscreen_w - 1)
+		xmax = g_menuscreen_w - 1;
+
+	y = border_top - 3;
+	if (y < 0)
+		y = 0;
+	ymax = border_bottom + 2;
+	if (ymax > g_menuscreen_h - 1)
+		ymax = g_menuscreen_h - 1;
+
+	for (x = xmin; x <= xmax; x++)
+		screen[y * g_menuscreen_w + x] = 0xa514;
+	for (y++; y < ymax; y++)
+	{
+		ls = y * g_menuscreen_w;
+		screen[ls + xmin] = 0xffff;
+		for (x = xmin + 1; x < xmax; x++)
+		{
+			unsigned int p = screen[ls + x];
+			if (p != 0xffff)
+				screen[ls + x] = ((p&0xf79e)>>1) - ((p&0xc618)>>3);
+		}
+		screen[ls + xmax] = 0xffff;
+	}
+	ls = y * g_menuscreen_w;
+	for (x = xmin; x <= xmax; x++)
+		screen[ls + x] = 0xffff;
+}
+
+static int borders_pending;
+
+static void menu_reset_borders(void)
+{
+	border_left = g_menuscreen_w;
+	border_right = 0;
+	border_top = g_menuscreen_h;
+	border_bottom = 0;
+}
+
+static void menu_draw_begin(int need_bg, int no_borders)
+{
+	plat_video_menu_begin();
+
+	menu_reset_borders();
+	borders_pending = g_border_style && !no_borders;
+
+	if (need_bg) {
+		if (g_border_style && no_borders) {
+			menu_darken_bg(g_menuscreen_ptr, g_menubg_ptr,
+				g_menuscreen_w * g_menuscreen_h, 1);
+		}
+		else {
+			memcpy(g_menuscreen_ptr, g_menubg_ptr,
+				g_menuscreen_w * g_menuscreen_h * 2);
+		}
+	}
+}
+
+static void menu_draw_end(void)
+{
+	if (borders_pending)
+		menu_darken_text_bg();
+	plat_video_menu_end();
+}
+
+static void menu_separation(void)
+{
+	if (borders_pending) {
+		menu_darken_text_bg();
+		menu_reset_borders();
 	}
 }
 
@@ -487,7 +570,7 @@ static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
 #endif
 
 	/* draw */
-	menu_draw_begin(1);
+	menu_draw_begin(1, 0);
 	menu_draw_selection(x, y + vi_sel_ln * me_mfont_h, w);
 	x += me_mfont_w * 2;
 
@@ -568,6 +651,8 @@ static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
 			for (tmp = ent_sel->help; l > 0; l--, tmp = strchr(tmp, '\n') + 1)
 				smalltext_out16(5, g_menuscreen_h - (l * me_sfont_h + 4), tmp, 0xffff);
 	}
+
+	menu_separation();
 
 	if (draw_more != NULL)
 		draw_more();
@@ -710,7 +795,7 @@ static void draw_menu_message(const char *msg, void (*draw_more)(void))
 	if (x < 0) x = 0;
 	if (y < 0) y = 0;
 
-	menu_draw_begin(1);
+	menu_draw_begin(1, 0);
 
 	for (p = msg; *p != 0 && y <= g_menuscreen_h - me_mfont_h; y += me_mfont_h) {
 		text_out16(x, y, p);
@@ -720,6 +805,8 @@ static void draw_menu_message(const char *msg, void (*draw_more)(void))
 		if (*p != 0)
 			p++;
 	}
+
+	menu_separation();
 
 	if (draw_more != NULL)
 		draw_more();
@@ -735,7 +822,7 @@ static void do_delete(const char *fpath, const char *fname)
 	const char *nm;
 	char tmp[64];
 
-	menu_draw_begin(1);
+	menu_draw_begin(1, 0);
 
 	len = strlen(fname);
 	if (len > g_menuscreen_w / me_sfont_w)
@@ -773,7 +860,7 @@ static void draw_dirlist(char *curdir, struct dirent **namelist, int n, int sel)
 	start = max_cnt / 2 - sel;
 	n--; // exclude current dir (".")
 
-	menu_draw_begin(1);
+	menu_draw_begin(1, 1);
 
 //	if (!rom_loaded)
 //		menu_darken_bg(gp2x_screen, 320*240, 0);
@@ -1036,7 +1123,7 @@ static void draw_savestate_menu(int menu_sel, int is_loading)
 		x = 12 + me_mfont_w * 2;
 #endif
 
-	menu_draw_begin(1);
+	menu_draw_begin(1, 1);
 
 	text_out16(x, y, is_loading ? "Load state" : "Save state");
 	y += 3 * me_mfont_h;
@@ -1098,7 +1185,7 @@ static int menu_loop_savestate(int is_loading)
 			if (menu_sel < STATE_SLOT_COUNT) {
 				state_slot = menu_sel;
 				if (emu_save_load_game(is_loading, 0)) {
-					me_update_msg(is_loading ? "Load failed" : "Save failed");
+					menu_update_msg(is_loading ? "Load failed" : "Save failed");
 					break;
 				}
 				ret = 1;
@@ -1199,7 +1286,7 @@ static void draw_key_config(const me_bind_action *opts, int opt_cnt, int player_
 	if (x < me_mfont_w * 2)
 		x = me_mfont_w * 2;
 
-	menu_draw_begin(1);
+	menu_draw_begin(1, 0);
 	if (player_idx >= 0)
 		text_out16(x, y, "Player %i controls", player_idx + 1);
 	else
@@ -1211,6 +1298,8 @@ static void draw_key_config(const me_bind_action *opts, int opt_cnt, int player_
 	for (i = 0; i < opt_cnt; i++, y += me_mfont_h)
 		text_out16(x, y, "%s : %s", opts[i].name,
 			action_binds(player_idx, opts[i].mask, dev_id));
+
+	menu_separation();
 
 	if (dev_id < 0)
 		dev_name = "(all devices)";
