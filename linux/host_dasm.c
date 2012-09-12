@@ -1,3 +1,14 @@
+/*
+ * (C) Gražvydas "notaz" Ignotas, 2009-2010
+ *
+ * This work is licensed under the terms of any of these licenses
+ * (at your option):
+ *  - GNU GPL, version 2 or later.
+ *  - GNU LGPL, version 2.1 or later.
+ *  - MAME license.
+ * See the COPYING file in the top-level directory.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +22,7 @@ extern char **g_argv;
 
 static struct disassemble_info di;
 
-#ifdef ARM
+#ifdef __arm__
 #define print_insn_func print_insn_little_arm
 #define BFD_ARCH bfd_arch_arm
 #define BFD_MACH bfd_mach_arm_4T

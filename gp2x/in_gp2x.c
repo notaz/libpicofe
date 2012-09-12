@@ -1,3 +1,14 @@
+/*
+ * (C) Gražvydas "notaz" Ignotas, 2006-2012
+ *
+ * This work is licensed under the terms of any of these licenses
+ * (at your option):
+ *  - GNU GPL, version 2 or later.
+ *  - GNU LGPL, version 2.1 or later.
+ *  - MAME license.
+ * See the COPYING file in the top-level directory.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +23,7 @@
 #define IN_GP2X_PREFIX "gp2x:"
 #define IN_GP2X_NBUTTONS 32
 
-/* note: in_gp2x hadles combos (if 2 btns have the same bind,
+/* note: in_gp2x handles combos (if 2 btns have the same bind,
  * both must be pressed for action to happen) */
 static int in_gp2x_combo_keys = 0;
 static int in_gp2x_combo_acts = 0;
