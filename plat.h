@@ -1,33 +1,37 @@
+#ifndef LIBPICOFE_PLAT_H
+#define LIBPICOFE_PLAT_H
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* stuff to be implemented by platform code */
-extern const char *renderer_names[];
-extern const char *renderer_names32x[];
+/* target device, everything is optional */
+struct plat_target {
+	int (*cpu_clock_get)(void);
+	int (*cpu_clock_set)(int clock);
+	int (*get_bat_capacity)(void);
+	void (*set_filter)(int which);
+	char **filters;
+	void (*set_lcdrate)(int is_pal);
+	void (*step_volume)(int is_up);
+};
 
-void pemu_prep_defconfig(void);
-void pemu_validate_config(void);
-void pemu_loop_prep(void);
-void pemu_loop_end(void);
-void pemu_forced_frame(int no_scale, int do_emu); // ..to g_menubg_src_ptr
-void pemu_finalize_frame(const char *fps, const char *notice_msg);
+extern struct plat_target plat_target;
+int  plat_target_init(void);
+void plat_target_finish(void);
+void plat_target_setup_input(void);
 
-void pemu_sound_start(void);
-void pemu_sound_stop(void);
-void pemu_sound_wait(void);
+static __inline void plat_target_set_filter(int which)
+{
+	if (plat_target.set_filter)
+		plat_target.set_filter(which);
+}
 
-void plat_early_init(void);
-void plat_init(void);
-void plat_finish(void);
-
-/* return the dir/ where configs, saves, bios, etc. are found */
-int  plat_get_root_dir(char *dst, int len);
-
-/* used before things blocking for a while (these funcs redraw on return) */
-void plat_status_msg_busy_first(const char *msg);
-void plat_status_msg_busy_next(const char *msg);
-void plat_status_msg_clear(void);
+static __inline void plat_target_set_lcdrate(int is_pal)
+{
+	if (plat_target.set_lcdrate)
+		plat_target.set_lcdrate(is_pal);
+}
 
 /* menu: enter (switch bpp, etc), begin/end drawing */
 void plat_video_menu_enter(int is_rom_loaded);
@@ -37,9 +41,9 @@ void plat_video_menu_leave(void);
 
 void plat_video_flip(void);
 void plat_video_wait_vsync(void);
-void plat_video_toggle_renderer(int change, int menu_call);
 
-void plat_update_volume(int has_changed, int is_up);
+/* return the dir/ where configs, saves, bios, etc. are found */
+int  plat_get_root_dir(char *dst, int len);
 
 int  plat_is_dir(const char *path);
 int  plat_wait_event(int *fds_hnds, int count, int timeout_ms);
@@ -60,3 +64,4 @@ void plat_debug_cat(char *str);
 } // extern "C"
 #endif
 
+#endif /* LIBPICOFE_PLAT_H */
