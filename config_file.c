@@ -147,14 +147,14 @@ static int parse_bind_val(const char *val, int *type)
 	return -1;
 }
 
-void config_read_keys(const char *cfg)
+void config_read_keys(const char *cfg_content)
 {
 	char dev[256], key[128], *act;
 	const char *p;
 	int bind, bindtype;
 	int dev_id;
 
-	p = cfg;
+	p = cfg_content;
 	while (p != NULL && (p = strstr(p, "binddev = ")) != NULL) {
 		p += 10;
 

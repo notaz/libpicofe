@@ -38,7 +38,7 @@ int g_menuscreen_h;
 #endif
 
 static unsigned char *menu_font_data = NULL;
-static int menu_text_color = 0xffff; // default to white
+static int menu_text_color = 0xfffe; // default to white
 static int menu_sel_color = -1; // disabled
 
 /* note: these might become non-constant in future */
@@ -388,7 +388,7 @@ static void menu_darken_text_bg(void)
 		for (x = xmin + 1; x < xmax; x++)
 		{
 			unsigned int p = screen[ls + x];
-			if (p != 0xffff)
+			if (p != menu_text_color)
 				screen[ls + x] = ((p&0xf79e)>>1) - ((p&0xc618)>>3);
 		}
 		screen[ls + xmax] = 0xffff;
@@ -631,6 +631,8 @@ static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
 
 		y += me_mfont_h;
 	}
+
+	menu_separation();
 
 	/* display help or message if we have one */
 	h = (g_menuscreen_h - h) / 2; // bottom area height
