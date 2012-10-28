@@ -22,8 +22,8 @@
 
 .arm
 
-.include "neon_eagle2x.Sinc"
-.include "neon_normalxx.Sinc"
+#include "neon_eagle2x.Sinc"
+#include "neon_normalxx.Sinc"
 
 .global neon_eagle2x_8_8
 .global neon_eagle2x_16_16
