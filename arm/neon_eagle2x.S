@@ -22,8 +22,8 @@
 
 .arm
 
-#include "neon_eagle2x.Sinc"
 #include "neon_normalxx.Sinc"
+#include "neon_eagle2x.Sinc"
 
 .global neon_eagle2x_8_8
 .global neon_eagle2x_16_16
@@ -50,10 +50,10 @@ neon_eagle2x_8_8:
         add r6, r1, ip                  @ r6 = dst + dststride
         sub sp, sp, #64                 @ sp -= 64
         sub r3, r3, r2                  @ r3 = srcstride - width
-        vst1.64 {d8-d11}, [sp:256]      @ save q4,q5
+        vst1.64 {d8-d11}, [sp,:256]     @ save q4,q5
         add r7, sp, #32                 @ r7 = sp + 32
         sub ip, ip, r2                  @ ip = dststride - width
-        vst1.64 {d12-d15}, [r7:256]     @ save q6,q7
+        vst1.64 {d12-d15}, [r7,:256]    @ save q6,q7
         lsl ip, #1                      @ ip = 2 * dststride - 2 * width
         mov r7, r2                      @ r7 = width
         sub r9, r9, #2                  @ r9 = height - 2
@@ -101,9 +101,9 @@ neon_eagle2x_8_8:
         neon_eagle2x_8_8_line last, r4, r0, r5, r7, r1, r6, r8, 0, 0
 
         add ip, sp, #32                 @ ip = sp + 32
-        vld1.64 {d8-d11}, [sp:256]      @ restore q4,q5
+        vld1.64 {d8-d11}, [sp,:256]     @ restore q4,q5
         mov sp, r10                     @ sp = oldsp
-        vld1.64 {d12-d15}, [ip:256]     @ restore q6,q7
+        vld1.64 {d12-d15}, [ip,:256]    @ restore q6,q7
         pop {r4-r10}
         bx lr
 
@@ -130,10 +130,10 @@ neon_eagle2x_16_16:
         add r6, r1, ip                  @ r6 = dst + dststride
         sub sp, sp, #64                 @ sp -= 64
         sub r3, r3, r2, lsl #1          @ r3 = srcstride - 2 * width
-        vst1.64 {d8-d11}, [sp:256]      @ save q4,q5
+        vst1.64 {d8-d11}, [sp,:256]     @ save q4,q5
         add r7, sp, #32                 @ r7 = sp + 32
         sub ip, ip, r2, lsl #1          @ ip = dststride - 2 * width
-        vst1.64 {d12-d15}, [r7:256]     @ save q6,q7
+        vst1.64 {d12-d15}, [r7,:256]    @ save q6,q7
         lsl ip, #1                      @ ip = 2 * dststride - 4 * width
         mov r7, r2                      @ r7 = width
         sub r9, r9, #2                  @ r9 = height - 2
@@ -180,9 +180,9 @@ neon_eagle2x_16_16:
         neon_eagle2x_16_16_line last, r4, r0, r5, r7, r1, r6, r8, 0, 0
 
         add ip, sp, #32                 @ ip = sp + 32
-        vld1.64 {d8-d11}, [sp:256]      @ restore q4,q5
+        vld1.64 {d8-d11}, [sp,:256]     @ restore q4,q5
         mov sp, r10                     @ sp = oldsp
-        vld1.64 {d12-d15}, [ip:256]     @ restore q6,q7
+        vld1.64 {d12-d15}, [ip,:256]    @ restore q6,q7
         pop {r4-r10}
         bx lr
 
@@ -222,9 +222,9 @@ neon_eagle2x_8_16:
         mov lr, sp                  @ tmpline1 = sp
         bic sp, sp, #31             @ align sp to 32 bytes
         sub r8, sp, #64             @ r8 = sp - 64
-        vst1.64 {d8-d11}, [r8:256]  @ save q4,q5
+        vst1.64 {d8-d11}, [r8,:256] @ save q4,q5
         sub r9, sp, #32             @ r9 = sp - 32
-        vst1.64 {d12-d15}, [r9:256] @ save q6,q7
+        vst1.64 {d12-d15}, [r9,:256]@ save q6,q7
         sub sp, sp, #(36 + 64)      @ sp -= (36 + 64)
         str r6, [sp]                @ oldsp = r6
         str r5, [sp, #4]            @ height = r5
@@ -327,9 +327,9 @@ neon_eagle2x_8_16:
 
         add r6, sp, #36             @ r6 = sp + 36
         ldr sp, [sp]                @ sp = oldsp
-        vld1.64 {d8-d11}, [r6:256]  @ restore q4,q5
+        vld1.64 {d8-d11}, [r6,:256] @ restore q4,q5
         add ip, r6, #32             @ ip = r6 + 32
-        vld1.64 {d12-d15}, [ip:256] @ restore q6,q7
+        vld1.64 {d12-d15}, [ip,:256]@ restore q6,q7
         pop {r4-r11,lr}
         bx lr
 

@@ -22,8 +22,8 @@
 
 .arm
 
-#include "neon_scale2x.Sinc"
 #include "neon_normalxx.Sinc"
+#include "neon_scale2x.Sinc"
 
 .global neon_scale2x_8_8
 .global neon_scale2x_16_16

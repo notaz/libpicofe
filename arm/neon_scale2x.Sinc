@@ -464,9 +464,9 @@
     .else
 
     .ifeq \dstalign32
-        _neon_scale2x_16_16_line_\part \src1, \src2, \src3, \counter, \dst1, \dst2, \reg1, \src1:128, \src2:128, \src3:128, \dst1, \dst2
+        _neon_scale2x_16_16_line_\part \src1, \src2, \src3, \counter, \dst1, \dst2, \reg1, \src1 A128, \src2 A128, \src3 A128, \dst1, \dst2
     .else
-        _neon_scale2x_16_16_line_\part \src1, \src2, \src3, \counter, \dst1, \dst2, \reg1, \src1:128, \src2:128, \src3:128, \dst1:256, \dst2:256
+        _neon_scale2x_16_16_line_\part \src1, \src2, \src3, \counter, \dst1, \dst2, \reg1, \src1 A128, \src2 A128, \src3 A128, \dst1 A256, \dst2 A256
     .endif
 
     .endif

@@ -21,6 +21,15 @@
 @@
 
 
+#if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 4)
+/* can't use because gas wants ',' before ':' */
+#define A128
+#define A256
+#else
+#define A128 :128
+#define A256 :256
+#endif
+
 
 .macro _neon_normalxx_8_16_line_middle src, dst, pal, counter, reg1, reg2, reg3, reg4, reg5, reg6, reg7, reg8, reg9, dststride, dA, dB
         ldr \reg1, [\src]                   @ reg1 = src[0-3]
