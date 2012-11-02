@@ -30,6 +30,20 @@
 #define A256 :256
 #endif
 
+.macro bgr1555_to_rgb565 dr0 dr1 t0 t1 t2
+        str r0, [sp, #-4]
+        mov r0, #0x07c0
+        vshl.u16 \t0, \dr0, #11
+        vshl.u16 \t1, \dr1, #11
+        vshl.u16 \dr0, \dr0, #1
+        vshl.u16 \dr1, \dr1, #1
+        vdup.16 \t2, r0
+        vsri.u16 \t0, \dr0, #11
+        vsri.u16 \t1, \dr1, #11
+        ldr r0, [sp, #-4]
+        vbif \dr0, \t0, \t2
+        vbif \dr1, \t1, \t2
+.endm
 
 .macro _neon_normalxx_8_16_line_middle src, dst, pal, counter, reg1, reg2, reg3, reg4, reg5, reg6, reg7, reg8, reg9, dststride, dA, dB
         ldr \reg1, [\src]                   @ reg1 = src[0-3]

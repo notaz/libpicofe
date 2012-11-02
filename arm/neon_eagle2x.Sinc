@@ -527,6 +527,11 @@
         vld1.16 {d27[3]}, [\reg1]       @ S3prev[7] = src[2 * (counter & 7) - 2 + srcstride]
     .endif
 
+    #ifdef DO_BGR_TO_RGB
+        bgr1555_to_rgb565 q14, q15, q8, q9, q10
+        bgr1555_to_rgb565 q6, q7, q8, q9, q10
+    #endif
+
         ubfx \reg1, \counter, #0, #3    @ reg1 = counter & 7
 
         lsl \reg1, #2
@@ -629,6 +634,12 @@
         vbsl q6, \qY, q12               @ E3 = < (X == Y && X == V) ? Y : C >
 
         vbsl q7, \qY, q12               @ E4 = < (Z == Y && Z == W) ? Y : C >
+
+    #ifdef DO_BGR_TO_RGB
+        bgr1555_to_rgb565 q14, q15, q0, q1, q2
+        bgr1555_to_rgb565 q6, q7, q0, q1, q2
+    #endif
+
         vst2.16 {q14-q15}, [\aldst1]!   @ [dst] = E1,E2; dst1 += 2*2*8
 
         cmp \counter, #8
@@ -721,6 +732,12 @@
         vbsl q6, \qY, q12               @ E3 = < (X == Y && X == V) ? Y : C >
 
         vbsl q7, \qY, q12               @ E4 = < (Z == Y && Z == W) ? Y : C >
+
+    #ifdef DO_BGR_TO_RGB
+        bgr1555_to_rgb565 q14, q15, q8, q9, q10
+        bgr1555_to_rgb565 q6, q7, q8, q9, q10
+    #endif
+
         vst2.16 {q14-q15}, [\aldst1]!   @ [dst] = E1,E2; dst1 += 2*2*8
 
         vst2.16 {q6-q7}, [\aldst2]!     @ [dst + dststride] = E3,E4; dst2 += 2*2*8
