@@ -105,88 +105,112 @@ static void scan_for_filters(void)
 	}
 	closedir(dir);
 
-	plat_target.filters = mfilters;
+	plat_target.hwfilters = mfilters;
 }
 
-static void set_lcdrate(int is_pal)
+static int do_system(const char *cmd)
 {
-	static int old_pal = -1;
-	char buf[128];
+	int ret;
 
-	if (is_pal == old_pal)
-		return;
+	ret = system(cmd);
+	if (ret >= 0)
+		ret = 0;
 
-	snprintf(buf, sizeof(buf), "%s/op_lcdrate.sh %d",
-			pnd_script_base, is_pal ? 50 : 60);
-	system(buf);
-	old_pal = is_pal;
+	return ret;
 }
 
-static void set_filter(int which)
+static int read_int_from_file(const char *fname)
 {
-	static int old_filter = -1;
-	char buf[128];
-	int i;
-
-	if (plat_target.filters == NULL || which == old_filter)
-		return;
-
-	for (i = 0; i < which; i++)
-		if (plat_target.filters[i] == NULL)
-			return;
-
-	if (plat_target.filters[i] == NULL)
-		return;
-
-	snprintf(buf, sizeof(buf), "%s/op_videofir.sh %s",
-		pnd_script_base, plat_target.filters[i]);
-	system(buf);
-	old_filter = which;
-}
-
-static int cpu_clock_get(void)
-{
+	int ret = -1;
 	FILE *f;
-	int ret = 0;
-	f = fopen("/proc/pandora/cpu_mhz_max", "r");
+
+	f = fopen(fname, "r");
 	if (f) {
 		fscanf(f, "%d", &ret);
 		fclose(f);
 	}
 	return ret;
+}
+
+static int lcdrate_set(int is_pal)
+{
+	static int old_pal = -1;
+	char buf[128];
+
+	if (is_pal == old_pal)
+		return 0;
+	old_pal = is_pal;
+
+	snprintf(buf, sizeof(buf), "%s/op_lcdrate.sh %d",
+			pnd_script_base, is_pal ? 50 : 60);
+	return do_system(buf);
+}
+
+static int hwfilter_set(int which)
+{
+	static int old_filter = -1;
+	char buf[128];
+	int i;
+
+	if (plat_target.hwfilters == NULL)
+		return -1;
+
+	if (which == old_filter)
+		return 0;
+
+	for (i = 0; i <= which; i++)
+		if (plat_target.hwfilters[i] == NULL)
+			return -1;
+
+	old_filter = which;
+
+	snprintf(buf, sizeof(buf), "%s/op_videofir.sh %s",
+		pnd_script_base, plat_target.hwfilters[which]);
+	return do_system(buf);
+}
+
+static int cpu_clock_get(void)
+{
+	return read_int_from_file("/proc/pandora/cpu_mhz_max");
 }
 
 static int cpu_clock_set(int cpu_clock)
 {
 	char buf[128];
 
-	if (cpu_clock != 0 && cpu_clock != cpu_clock_get()) {
-		snprintf(buf, sizeof(buf), "unset DISPLAY; echo y | %s/op_cpuspeed.sh %d",
-			 pnd_script_base, cpu_clock);
-		system(buf);
-	}
-	return 0;
+	if (cpu_clock < 14)
+		return -1;
+
+	if (cpu_clock == cpu_clock_get())
+		return 0;
+
+	snprintf(buf, sizeof(buf),
+		 "unset DISPLAY; echo y | %s/op_cpuspeed.sh %d",
+		 pnd_script_base, cpu_clock);
+	return do_system(buf);
 }
 
-static int get_bat_capacity(void)
+static int bat_capacity_get(void)
 {
-	FILE *f;
-	int ret = 0;
-	f = fopen("/sys/class/power_supply/bq27500-0/capacity", "r");
-	if (f) {
-		fscanf(f, "%d", &ret);
-		fclose(f);
-	}
-	return ret;
+	return read_int_from_file("/sys/class/power_supply/bq27500-0/capacity");
+}
+
+static int gamma_set(int val, int black_level)
+{
+	char buf[128];
+
+	snprintf(buf, sizeof(buf), "%s/op_gamma.sh -b %d %.2f",
+		 pnd_script_base, black_level, (float)val / 100.0f);
+	return do_system(buf);
 }
 
 struct plat_target plat_target = {
 	cpu_clock_get,
 	cpu_clock_set,
-	get_bat_capacity,
-	set_filter,
-	NULL,
-	set_lcdrate,
+	bat_capacity_get,
+	hwfilter_set,
+	lcdrate_set,
+	gamma_set,
 };
 
 int plat_target_init(void)

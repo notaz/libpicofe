@@ -9,11 +9,12 @@ extern "C" {
 struct plat_target {
 	int (*cpu_clock_get)(void);
 	int (*cpu_clock_set)(int clock);
-	int (*get_bat_capacity)(void);
-	void (*set_filter)(int which);
-	char **filters;
-	void (*set_lcdrate)(int is_pal);
-	void (*step_volume)(int is_up);
+	int (*bat_capacity_get)(void);
+	int (*hwfilter_set)(int which);
+	int (*lcdrate_set)(int is_pal);
+	int (*gamma_set)(int val, int black_level);
+	int (*step_volume)(int is_up);
+	char **hwfilters;
 };
 
 extern struct plat_target plat_target;
@@ -21,16 +22,59 @@ int  plat_target_init(void);
 void plat_target_finish(void);
 void plat_target_setup_input(void);
 
-static __inline void plat_target_set_filter(int which)
+/* CPU clock in MHz */
+static __inline int plat_target_cpu_clock_get(void)
 {
-	if (plat_target.set_filter)
-		plat_target.set_filter(which);
+	if (plat_target.cpu_clock_get)
+		return plat_target.cpu_clock_get();
+	return -1;
 }
 
-static __inline void plat_target_set_lcdrate(int is_pal)
+static __inline int plat_target_cpu_clock_set(int mhz)
 {
-	if (plat_target.set_lcdrate)
-		plat_target.set_lcdrate(is_pal);
+	if (plat_target.cpu_clock_set)
+		return plat_target.cpu_clock_set(mhz);
+	return -1;
+}
+
+/* battery capacity (0-100) */
+static __inline int plat_target_bat_capacity_get(void)
+{
+	if (plat_target.bat_capacity_get)
+		return plat_target.bat_capacity_get();
+	return -1;
+}
+
+/* set some hardware-specific video filter, 0 for none */
+static __inline int plat_target_hwfilter_set(int which)
+{
+	if (plat_target.hwfilter_set)
+		return plat_target.hwfilter_set(which);
+	return -1;
+}
+
+/* set device LCD rate, is_pal 0 for NTSC, 1 for PAL compatible */
+static __inline int plat_target_lcdrate_set(int is_pal)
+{
+	if (plat_target.lcdrate_set)
+		return plat_target.lcdrate_set(is_pal);
+	return -1;
+}
+
+/* set device LCD rate, is_pal 0 for NTSC, 1 for PAL compatible */
+static __inline int plat_target_gamma_set(int val, int black_level)
+{
+	if (plat_target.gamma_set)
+		return plat_target.gamma_set(val, black_level);
+	return -1;
+}
+
+/* step sound volume up or down */
+static __inline int plat_target_step_volume(int is_up)
+{
+	if (plat_target.step_volume)
+		return plat_target.step_volume(is_up);
+	return -1;
 }
 
 /* menu: enter (switch bpp, etc), begin/end drawing */
