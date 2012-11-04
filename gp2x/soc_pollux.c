@@ -27,19 +27,27 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <linux/fb.h>
+#include <linux/soundcard.h>
 
 #include "soc.h"
 #include "plat_gp2x.h"
-#include "../emu.h"
 #include "../plat.h"
-#include "../arm_utils.h"
-#include "pollux_set.h"
 
-static volatile unsigned short *memregs;
-static volatile unsigned int   *memregl;
-static int memdev = -1;
-static int battdev = -1;
+volatile unsigned short *memregs;
+volatile unsigned int   *memregl;
+int memdev = -1;
+int gp2x_dev_id;
 
+static int battdev = -1, mixerdev = -1;
+static int cpu_clock_allowed;
+static unsigned int saved_video_regs[2][6];
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+#endif
+
+// TODO FIXME: merge
+#if 0
 extern void *gp2x_screens[4];
 
 #define fb_buf_count 4
@@ -244,34 +252,6 @@ static unsigned int gp2x_get_ticks_ms_(void)
 	return v64 >> 32;
 }
 
-static void timer_cleanup(void)
-{
-	TIMER_REG(0x40) = 0x0c;	/* be sure clocks are on */
-	TIMER_REG(0x08) = 0x23;	/* stop the timer, clear irq in case it's pending */
-	TIMER_REG(0x00) = 0;	/* clear counter */
-	TIMER_REG(0x40) = 0;	/* clocks off */
-	TIMER_REG(0x44) = 0;	/* dividers back to default */
-}
-
-/* note: both PLLs are programmed the same way,
- * the databook incorrectly states that PLL1 differs */
-static int decode_pll(unsigned int reg)
-{
-	long long v;
-	int p, m, s;
-
-	p = (reg >> 18) & 0x3f;
-	m = (reg >> 8) & 0x3ff;
-	s = reg & 0xff;
-
-	if (p == 0)
-		p = 1;
-
-	v = 27000000; // master clock
-	v = v * m / (p << s);
-	return v;
-}
-
 int pollux_get_real_snd_rate(int req_rate)
 {
 	int clk0_src, clk1_src, rate, div;
@@ -439,4 +419,251 @@ void pollux_finish(void)
 	if (battdev >= 0)
 		close(battdev);
 }
+#endif
 
+/* note: both PLLs are programmed the same way,
+ * the databook incorrectly states that PLL1 differs */
+static int decode_pll(unsigned int reg)
+{
+	long long v;
+	int p, m, s;
+
+	p = (reg >> 18) & 0x3f;
+	m = (reg >> 8) & 0x3ff;
+	s = reg & 0xff;
+
+	if (p == 0)
+		p = 1;
+
+	v = 27000000; // master clock
+	v = v * m / (p << s);
+	return v;
+}
+
+#define TIMER_BASE3 0x1980
+#define TIMER_REG(x) memregl[(TIMER_BASE3 + x) >> 2]
+
+static void timer_cleanup(void)
+{
+	TIMER_REG(0x40) = 0x0c;	/* be sure clocks are on */
+	TIMER_REG(0x08) = 0x23;	/* stop the timer, clear irq in case it's pending */
+	TIMER_REG(0x00) = 0;	/* clear counter */
+	TIMER_REG(0x40) = 0;	/* clocks off */
+	TIMER_REG(0x44) = 0;	/* dividers back to default */
+}
+
+static void save_multiple_regs(unsigned int *dest, int base, int count)
+{
+	const volatile unsigned int *regs = memregl + base / 4;
+	int i;
+
+	for (i = 0; i < count; i++)
+		dest[i] = regs[i];
+}
+
+static void restore_multiple_regs(int base, const unsigned int *src, int count)
+{
+	volatile unsigned int *regs = memregl + base / 4;
+	int i;
+
+	for (i = 0; i < count; i++)
+		regs[i] = src[i];
+}
+
+/* newer API */
+static int pollux_cpu_clock_get(void)
+{
+	return decode_pll(memregl[0xf004>>2]) / 1000000;
+}
+
+int pollux_cpu_clock_set(int mhz)
+{
+	int adiv, mdiv, pdiv, sdiv = 0;
+	int i, vf000, vf004;
+
+	if (!cpu_clock_allowed)
+		return -1;
+	if (mhz == pollux_cpu_clock_get())
+		return 0;
+
+	// m = MDIV, p = PDIV, s = SDIV
+	#define SYS_CLK_FREQ 27
+	pdiv = 9;
+	mdiv = (mhz * pdiv) / SYS_CLK_FREQ;
+	if (mdiv & ~0x3ff)
+		return -1;
+	vf004 = (pdiv<<18) | (mdiv<<8) | sdiv;
+
+	// attempt to keep the AHB divider close to 250, but not higher
+	for (adiv = 1; mhz / adiv > 250; adiv++)
+		;
+
+	vf000 = memregl[0xf000>>2];
+	vf000 = (vf000 & ~0x3c0) | ((adiv - 1) << 6);
+	memregl[0xf000>>2] = vf000;
+	memregl[0xf004>>2] = vf004;
+	memregl[0xf07c>>2] |= 0x8000;
+	for (i = 0; (memregl[0xf07c>>2] & 0x8000) && i < 0x100000; i++)
+		;
+
+	printf("clock set to %dMHz, AHB set to %dMHz\n", mhz, mhz / adiv);
+	return 0;
+}
+
+static int pollux_bat_capacity_get(void)
+{
+	unsigned short magic_val = 0;
+
+	if (battdev < 0)
+		return -1;
+	if (read(battdev, &magic_val, sizeof(magic_val)) != sizeof(magic_val))
+		return -1;
+	switch (magic_val) {
+	default:
+	case 1:	return 100;
+	case 2: return 66;
+	case 3: return 40;
+	case 4: return 0;
+	}
+}
+
+static int step_volume(int is_up)
+{
+	static int volume = 50;
+	int ret, val;
+
+	if (mixerdev < 0)
+		return -1;
+
+	if (is_up) {
+		volume += 5;
+		if (volume > 255) volume = 255;
+	}
+	else {
+		volume -= 5;
+		if (volume < 0) volume = 0;
+	}
+	val = volume;
+	val |= val << 8;
+
+ 	ret = ioctl(mixerdev, SOUND_MIXER_WRITE_PCM, &val);
+	if (ret == -1)
+		perror("WRITE_PCM");
+
+	return ret;
+}
+
+struct plat_target plat_target = {
+	pollux_cpu_clock_get,
+	pollux_cpu_clock_set,
+	pollux_bat_capacity_get,
+
+	.step_volume = step_volume,
+};
+
+int plat_target_init(void)
+{
+	int rate, timer_div, timer_div2;
+	FILE *f;
+
+	memdev = open("/dev/mem", O_RDWR);
+	if (memdev == -1) {
+		perror("open(/dev/mem) failed");
+		exit(1);
+	}
+
+	memregs	= mmap(0, 0x20000, PROT_READ|PROT_WRITE, MAP_SHARED,
+		memdev, 0xc0000000);
+	if (memregs == MAP_FAILED) {
+		perror("mmap(memregs) failed");
+		exit(1);
+	}
+	memregl = (volatile void *)memregs;
+
+	// save video regs of both MLCs
+	save_multiple_regs(saved_video_regs[0], 0x4058, ARRAY_SIZE(saved_video_regs[0]));
+	save_multiple_regs(saved_video_regs[1], 0x4458, ARRAY_SIZE(saved_video_regs[1]));
+
+	/* some firmwares have sys clk on PLL0, we can't adjust CPU clock
+	 * by reprogramming the PLL0 then, as it overclocks system bus */
+	if ((memregl[0xf000>>2] & 0x03000030) == 0x01000000)
+		cpu_clock_allowed = 1;
+	else {
+		cpu_clock_allowed = 0;
+		fprintf(stderr, "unexpected PLL config (%08x), overclocking disabled\n",
+			memregl[0xf000>>2]);
+	}
+
+	/* find what PLL1 runs at, for the timer */
+	rate = decode_pll(memregl[0xf008>>2]);
+	printf("PLL1 @ %dHz\n", rate);
+
+	/* setup timer */
+	timer_div = (rate + 500000) / 1000000;
+	timer_div2 = 0;
+	while (timer_div > 256) {
+		timer_div /= 2;
+		timer_div2++;
+	}
+	if (1 <= timer_div && timer_div <= 256 && timer_div2 < 4) {
+		int timer_rate = (rate >> timer_div2) / timer_div;
+		if (TIMER_REG(0x08) & 8) {
+			fprintf(stderr, "warning: timer in use, overriding!\n");
+			timer_cleanup();
+		}
+		if (timer_rate != 1000000)
+			fprintf(stderr, "warning: timer drift %d us\n", timer_rate - 1000000);
+
+		timer_div2 = (timer_div2 + 3) & 3;
+		TIMER_REG(0x44) = ((timer_div - 1) << 4) | 2;	/* using PLL1 */
+		TIMER_REG(0x40) = 0x0c;				/* clocks on */
+		TIMER_REG(0x08) = 0x68 | timer_div2;		/* run timer, clear irq, latch value */
+	}
+	else
+		fprintf(stderr, "warning: could not make use of timer\n");
+
+	battdev = open("/dev/pollux_batt", O_RDONLY);
+	if (battdev < 0)
+		perror("Warning: could't open pollux_batt");
+
+	f = fopen("/dev/accel", "rb");
+	if (f) {
+		printf("detected Caanoo\n");
+		gp2x_dev_id = GP2X_DEV_CAANOO;
+		fclose(f);
+	}
+	else {
+		printf("detected Wiz\n");
+		gp2x_dev_id = GP2X_DEV_WIZ;
+	}
+
+	mixerdev = open("/dev/mixer", O_RDWR);
+	if (mixerdev == -1)
+		perror("open(/dev/mixer)");
+
+	return 0;
+}
+
+/* to be called after in_probe */
+void plat_target_setup_input(void)
+{
+}
+
+void plat_target_finish(void)
+{
+	timer_cleanup();
+
+	restore_multiple_regs(0x4058, saved_video_regs[0],
+		ARRAY_SIZE(saved_video_regs[0]));
+	restore_multiple_regs(0x4458, saved_video_regs[1],
+		ARRAY_SIZE(saved_video_regs[1]));
+	memregl[0x4058>>2] |= 0x10;
+	memregl[0x4458>>2] |= 0x10;
+
+	if (battdev >= 0)
+		close(battdev);
+	if (mixerdev >= 0)
+		close(mixerdev);
+	munmap((void *)memregs, 0x20000);
+	close(memdev);
+}

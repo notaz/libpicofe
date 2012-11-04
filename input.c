@@ -17,10 +17,6 @@
 #include "plat.h"
 #include "lprintf.h"
 
-#ifdef IN_GP2X
-#error needs update: in_gp2x_init in_gp2x_update
-#include "../gp2x/in_gp2x.h"
-#endif
 #ifdef IN_VK
 #error needs update: in_vk_init in_vk_update
 #include "../win32/in_vk.h"
