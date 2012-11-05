@@ -1,6 +1,8 @@
 #ifndef LIBPICOFE_PLAT_H
 #define LIBPICOFE_PLAT_H
 
+#include <stdlib.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
