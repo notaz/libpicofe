@@ -528,8 +528,8 @@
     .endif
 
     #ifdef DO_BGR_TO_RGB
-        bgr1555_to_rgb565 q14, q15, q8, q9, q10
-        bgr1555_to_rgb565 q6, q7, q8, q9, q10
+        bgr1555_to_rgb565 q14, q15, q8, q9, q10, \reg1
+        bgr1555_to_rgb565 q6, q7, q8, q9, q10, \reg1
     #endif
 
         ubfx \reg1, \counter, #0, #3    @ reg1 = counter & 7
@@ -636,8 +636,8 @@
         vbsl q7, \qY, q12               @ E4 = < (Z == Y && Z == W) ? Y : C >
 
     #ifdef DO_BGR_TO_RGB
-        bgr1555_to_rgb565 q14, q15, q0, q1, q2
-        bgr1555_to_rgb565 q6, q7, q0, q1, q2
+        bgr1555_to_rgb565 q14, q15, q0, q1, q2, \reg1
+        bgr1555_to_rgb565 q6, q7, q0, q1, q2, \reg1
     #endif
 
         vst2.16 {q14-q15}, [\aldst1]!   @ [dst] = E1,E2; dst1 += 2*2*8
@@ -734,8 +734,8 @@
         vbsl q7, \qY, q12               @ E4 = < (Z == Y && Z == W) ? Y : C >
 
     #ifdef DO_BGR_TO_RGB
-        bgr1555_to_rgb565 q14, q15, q8, q9, q10
-        bgr1555_to_rgb565 q6, q7, q8, q9, q10
+        bgr1555_to_rgb565 q14, q15, q8, q9, q10, \reg1
+        bgr1555_to_rgb565 q6, q7, q8, q9, q10, \reg1
     #endif
 
         vst2.16 {q14-q15}, [\aldst1]!   @ [dst] = E1,E2; dst1 += 2*2*8
