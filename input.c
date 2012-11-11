@@ -514,6 +514,9 @@ int in_get_config(int dev_id, int what, void *val)
 	case IN_CFG_KEY_NAMES:
 		return -1; /* not implemented */
 	default:
+		if (!dev->probed)
+			return -1;
+
 		return DRV(dev->drv_id).get_config(dev->drv_data, what, ival);
 	}
 
@@ -527,9 +530,12 @@ static int in_set_blocking(int is_blocking)
 	/* have_async_devs means we will have to do all reads async anyway.. */
 	if (!in_have_async_devs) {
 		for (i = 0; i < in_dev_count; i++) {
-			if (in_devices[i].probed)
-				DRV(in_devices[i].drv_id).set_config(in_devices[i].drv_data,
-								     IN_CFG_BLOCKING, is_blocking);
+			if (!in_devices[i].probed)
+				continue;
+
+			DRV(in_devices[i].drv_id).set_config(
+				in_devices[i].drv_data, IN_CFG_BLOCKING,
+				is_blocking);
 		}
 	}
 
@@ -876,7 +882,7 @@ void in_clean_binds(void)
 		int ret, count, *binds, *def_binds;
 		in_dev_t *dev = &in_devices[i];
 
-		if (dev->binds == NULL || dev->drv_data == NULL)
+		if (dev->binds == NULL || !dev->probed)
 			continue;
 
 		count = dev->key_count;

@@ -1307,7 +1307,7 @@ static void draw_key_config(const me_bind_action *opts, int opt_cnt, int player_
 	if (dev_id < 0)
 		dev_name = "(all devices)";
 	else
-		dev_name = in_get_dev_name(dev_id, 1, 1);
+		dev_name = in_get_dev_name(dev_id, 0, 1);
 	w = strlen(dev_name) * me_mfont_w;
 	if (w < 30 * me_mfont_w)
 		w = 30 * me_mfont_w;
@@ -1370,7 +1370,7 @@ static void key_config_loop(const me_bind_action *opts, int opt_cnt, int player_
 				for (i = 0, dev_id--; i < IN_MAX_DEVS + 1; i++, dev_id--) {
 					if (dev_id < -1)
 						dev_id = IN_MAX_DEVS - 1;
-					if (dev_id == -1 || in_get_dev_name(dev_id, 1, 0) != NULL)
+					if (dev_id == -1 || in_get_dev_name(dev_id, 0, 0) != NULL)
 						break;
 				}
 				continue;
@@ -1378,7 +1378,7 @@ static void key_config_loop(const me_bind_action *opts, int opt_cnt, int player_
 				for (i = 0, dev_id++; i < IN_MAX_DEVS; i++, dev_id++) {
 					if (dev_id >= IN_MAX_DEVS)
 						dev_id = -1;
-					if (dev_id == -1 || in_get_dev_name(dev_id, 1, 0) != NULL)
+					if (dev_id == -1 || in_get_dev_name(dev_id, 0, 0) != NULL)
 						break;
 				}
 				continue;
