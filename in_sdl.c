@@ -26,6 +26,8 @@ struct in_sdl_state {
 	keybits_t keystate[SDLK_LAST / KEYBITS_WORD_BITS + 1];
 };
 
+static void (*ext_event_handler)(void *event);
+
 static const char * const in_sdl_keys[SDLK_LAST] = {
 	[SDLK_BACKSPACE] = "backspace",
 	[SDLK_TAB] = "tab",
@@ -238,7 +240,7 @@ static int handle_event(struct in_sdl_state *state, SDL_Event *event,
 	int *kc_out, int *down_out)
 {
 	if (event->type != SDL_KEYDOWN && event->type != SDL_KEYUP)
-		return 0;
+		return -1;
 
 	update_keystate(state->keystate, event->key.keysym.sym,
 		event->type == SDL_KEYDOWN);
@@ -292,6 +294,8 @@ static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
 		down = event->jbutton.state == SDL_PRESSED;
 		ret = 1;
 		break;
+	default:
+		return -1;
 	}
 
 	if (ret)
@@ -328,6 +332,12 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 			else
 				ret = handle_event(state,
 					&events[i], one_kc, one_down);
+			if (ret == -1) {
+				if (ext_event_handler != NULL)
+					ext_event_handler(&events[i]);
+				continue;
+			}
+
 			retval |= ret;
 			if (one_kc != NULL && ret)
 				goto out;
@@ -461,8 +471,9 @@ static const in_drv_t in_sdl_drv = {
 	.menu_translate = in_sdl_menu_translate,
 };
 
-void in_sdl_init(const struct in_default_bind *defbinds)
+void in_sdl_init(const struct in_default_bind *defbinds,
+		 void (*handler)(void *event))
 {
 	in_register_driver(&in_sdl_drv, defbinds);
+	ext_event_handler = handler;
 }
-
