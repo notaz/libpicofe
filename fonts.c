@@ -250,13 +250,13 @@ void basic_text_out16_nf(void *fb, int w, int x, int y, const char *text)
 			if (fd&0x02) s[6] = val;
 			if (fd&0x01) s[7] = val;
 
-			// draw "shadow"
+			// draw "shadow" (RGB1555 compatible)
 			if (l > 0)
 				fdp = fontdata8x8[c * 8 + l - 1];
 
 			for (fd1 = 0x80; fd1 != 0; fd1 >>= 1, s++)
 				if (!(fd & (fd1 >> 1)) && ((fdp | fd) & fd1))
-					s[1] = (s[1] >> 1) & 0x7bef;
+					s[1] = (s[1] >> 1) & 0x39ef;
 		}
 	}
 }
