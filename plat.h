@@ -16,7 +16,11 @@ struct plat_target {
 	int (*lcdrate_set)(int is_pal);
 	int (*gamma_set)(int val, int black_level);
 	int (*step_volume)(int is_up);
-	char **hwfilters;
+	const char **vout_methods;
+	int vout_method;
+	int vout_fullscreen;
+	const char **hwfilters;
+	int hwfilter;
 };
 
 extern struct plat_target plat_target;

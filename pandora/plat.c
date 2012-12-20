@@ -43,7 +43,7 @@ static void scan_for_filters(void)
 {
 	struct dirent *ent;
 	int i, count = 0;
-	char **mfilters;
+	const char **mfilters;
 	char buff[64];
 	DIR *dir;
 
