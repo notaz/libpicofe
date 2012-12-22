@@ -30,6 +30,7 @@ static int fs_w, fs_h;
 static int old_fullscreen;
 static int vout_mode_overlay = -1, vout_mode_gl = -1;
 static void *display, *window;
+static int gl_quirks;
 
 /* w, h is layer resolution */
 int plat_sdl_change_video_mode(int w, int h, int force)
@@ -96,7 +97,7 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     }
   }
   else if (plat_target.vout_method == vout_mode_gl) {
-    plat_sdl_gl_active = (gl_init(display, window) == 0);
+    plat_sdl_gl_active = (gl_init(display, window, &gl_quirks) == 0);
     if (!plat_sdl_gl_active) {
       fprintf(stderr, "warning: could not init GL.\n");
       plat_target.vout_method = 0;
@@ -139,6 +140,10 @@ void plat_sdl_event_handler(void *event_)
         SDL_DisplayYUVOverlay(plat_sdl_overlay, &dstrect);
       }
       else if (plat_sdl_gl_active) {
+        if (gl_quirks & GL_QUIRK_ACTIVATE_RECREATE) {
+          gl_finish();
+          plat_sdl_gl_active = (gl_init(display, window, &gl_quirks) == 0);
+        }
         gl_flip(NULL, 0, 0);
       }
       // else SDL takes care of it
@@ -220,7 +225,7 @@ int plat_sdl_init(void)
   display = wminfo.info.x11.display;
   window = (void *)wminfo.info.x11.window;
 
-  ret = gl_init(display, window);
+  ret = gl_init(display, window, &gl_quirks);
   if (ret == 0) {
     gl_works = 1;
     gl_finish();

@@ -3,6 +3,7 @@
 
 #include <EGL/egl.h>
 #include <GLES/gl.h>
+#include "gl_platform.h"
 #include "gl.h"
 
 static EGLDisplay edpy;
@@ -29,7 +30,7 @@ static int gles_have_error(const char *name)
 	return 0;
 }
 
-int gl_init(void *display, void *window)
+int gl_init(void *display, void *window, int *quirks)
 {
 	EGLConfig ecfg = NULL;
 	GLuint texture_name = 0;
@@ -41,6 +42,12 @@ int gl_init(void *display, void *window)
 	{
 		EGL_NONE
 	};
+
+	ret = gl_platform_init(&display, &window, quirks);
+	if (ret != 0) {
+		fprintf(stderr, "gl_platform_init failed with %d\n", ret);
+		goto out;
+	}
 
 	tmp_texture_mem = calloc(1, 1024 * 512 * 2);
 	if (tmp_texture_mem == NULL) {
@@ -177,4 +184,6 @@ void gl_finish(void)
 	esfc = EGL_NO_SURFACE;
 	eglTerminate(edpy);
 	edpy = EGL_NO_DISPLAY;
+
+	gl_platform_finish();
 }
