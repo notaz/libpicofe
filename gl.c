@@ -136,21 +136,23 @@ int gl_flip(const void *fb, int w, int h)
 {
 	static int old_w, old_h;
 
-	if (w != old_w || h != old_h) {
-		float f_w = (float)w / 1024.0f;
-		float f_h = (float)h / 512.0f;
-		texture[1*2 + 0] = f_w;
-		texture[2*2 + 1] = f_h;
-		texture[3*2 + 0] = f_w;
-		texture[3*2 + 1] = f_h;
-		old_w = w;
-		old_h = h;
-	}
+	if (fb != NULL) {
+		if (w != old_w || h != old_h) {
+			float f_w = (float)w / 1024.0f;
+			float f_h = (float)h / 512.0f;
+			texture[1*2 + 0] = f_w;
+			texture[2*2 + 1] = f_h;
+			texture[3*2 + 0] = f_w;
+			texture[3*2 + 1] = f_h;
+			old_w = w;
+			old_h = h;
+		}
 
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h,
-		GL_RGB, GL_UNSIGNED_SHORT_5_6_5, fb);
-	if (gl_have_error("glTexSubImage2D"))
-		return -1;
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h,
+			GL_RGB, GL_UNSIGNED_SHORT_5_6_5, fb);
+		if (gl_have_error("glTexSubImage2D"))
+			return -1;
+	}
 
 	glVertexPointer(3, GL_FLOAT, 0, vertices);
 	glTexCoordPointer(2, GL_FLOAT, 0, texture);

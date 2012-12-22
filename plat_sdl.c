@@ -31,7 +31,8 @@ static int old_fullscreen;
 static int vout_mode_overlay = -1, vout_mode_gl = -1;
 static void *display, *window;
 
-int plat_sdl_change_video_mode(int w, int h)
+/* w, h is layer resolution */
+int plat_sdl_change_video_mode(int w, int h, int force)
 {
   static int prev_w, prev_h;
 
@@ -43,6 +44,13 @@ int plat_sdl_change_video_mode(int w, int h)
     h = prev_h;
   else
     prev_h = h;
+
+  // skip GL recreation if window doesn't change - avoids flicker
+  if (plat_target.vout_method == vout_mode_gl && plat_sdl_gl_active
+      && plat_target.vout_fullscreen == old_fullscreen && !force)
+  {
+    return 0;
+  }
 
   if (plat_sdl_overlay != NULL) {
     SDL_FreeYUVOverlay(plat_sdl_overlay);
@@ -111,6 +119,7 @@ int plat_sdl_change_video_mode(int w, int h)
 
 void plat_sdl_event_handler(void *event_)
 {
+  static int was_active;
   SDL_Event *event = event_;
 
   if (event->type == SDL_VIDEORESIZE) {
@@ -120,8 +129,21 @@ void plat_sdl_event_handler(void *event_)
     {
       window_w = event->resize.w;
       window_h = event->resize.h;
-      plat_sdl_change_video_mode(0, 0);
+      plat_sdl_change_video_mode(0, 0, 1);
     }
+  }
+  else if (event->type == SDL_ACTIVEEVENT) {
+    if (event->active.gain && !was_active) {
+      if (plat_sdl_overlay != NULL) {
+        SDL_Rect dstrect = { 0, 0, plat_sdl_screen->w, plat_sdl_screen->h };
+        SDL_DisplayYUVOverlay(plat_sdl_overlay, &dstrect);
+      }
+      else if (plat_sdl_gl_active) {
+        gl_flip(NULL, 0, 0);
+      }
+      // else SDL takes care of it
+    }
+    was_active = event->active.gain;
   }
 }
 
@@ -158,7 +180,7 @@ int plat_sdl_init(void)
       g_menuscreen_h = h;
   }
 
-  ret = plat_sdl_change_video_mode(g_menuscreen_w, g_menuscreen_h);
+  ret = plat_sdl_change_video_mode(g_menuscreen_w, g_menuscreen_h, 1);
   if (ret != 0) {
     plat_sdl_screen = SDL_SetVideoMode(0, 0, 16, SDL_SWSURFACE);
     if (plat_sdl_screen == NULL) {
