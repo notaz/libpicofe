@@ -30,7 +30,6 @@ char menu_error_msg[64] = { 0, };
 void *g_menuscreen_ptr;
 void *g_menubg_src_ptr;
 void *g_menubg_ptr;
-static char rom_fname_reload[256];
 
 #if !MSCREEN_SIZE_FIXED
 int g_menuscreen_w;
@@ -50,6 +49,7 @@ static const int me_mfont_w = 8, me_mfont_h = 10;
 static const int me_sfont_w = 6, me_sfont_h = 10;
 #endif
 
+static int g_menu_filter_off;
 static int g_border_style;
 static int border_left, border_right, border_top, border_bottom;
 
@@ -854,10 +854,12 @@ static void do_delete(const char *fpath, const char *fname)
 
 // -------------- ROM selector --------------
 
-static void draw_dirlist(char *curdir, struct dirent **namelist, int n, int sel)
+static void draw_dirlist(char *curdir, struct dirent **namelist,
+	int n, int sel, int show_help)
 {
 	int max_cnt, start, i, x, pos;
 	void *darken_ptr;
+	char buff[64];
 
 	max_cnt = g_menuscreen_h / me_sfont_h;
 	start = max_cnt / 2 - sel;
@@ -887,6 +889,22 @@ static void draw_dirlist(char *curdir, struct dirent **namelist, int n, int sel)
 		}
 	}
 	smalltext_out16(5, max_cnt/2 * me_sfont_h, ">", 0xffff);
+
+	if (show_help) {
+		darken_ptr = (short *)g_menuscreen_ptr
+			+ g_menuscreen_w * (g_menuscreen_h - me_sfont_h * 5 / 2);
+		menu_darken_bg(darken_ptr, darken_ptr,
+			g_menuscreen_w * (me_sfont_h * 5 / 2), 1);
+
+		snprintf(buff, sizeof(buff), "%s - select, %s - back",
+			in_get_key_name(-1, -PBTN_MOK), in_get_key_name(-1, -PBTN_MBACK));
+		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 2 - 2, buff, 0xe78c);
+		snprintf(buff, sizeof(buff), g_menu_filter_off ?
+			 "%s - hide unknown files" : "%s - show all files",
+			in_get_key_name(-1, -PBTN_MA3));
+		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 1 - 2, buff, 0xe78c);
+	}
+
 	menu_draw_end();
 }
 
@@ -906,19 +924,25 @@ static int scandir_cmp(const void *p1, const void *p2)
 
 static int scandir_filter(const struct dirent *ent)
 {
-	const char *p;
+	const char *ext;
 	int i;
 
-	if (ent == NULL || ent->d_name == NULL) return 0;
-	if (strlen(ent->d_name) < 5) return 1;
+	if (ent == NULL || ent->d_name == NULL)
+		return 0;
 
-	p = ent->d_name + strlen(ent->d_name) - 4;
+	if (ent->d_type == DT_DIR)
+		return 1;
 
+	ext = strrchr(ent->d_name, '.');
+	if (ext == NULL)
+		return 0;
+
+	ext++;
 	for (i = 0; i < array_size(filter_exts); i++)
-		if (strcmp(p, filter_exts[i]) == 0)
-			return 0;
+		if (strcasecmp(ext, filter_exts[i]) == 0)
+			return 1;
 
-	return 1;
+	return 0;
 }
 
 static int dirent_seek_char(struct dirent **namelist, int len, int sel, char c)
@@ -937,24 +961,46 @@ static int dirent_seek_char(struct dirent **namelist, int len, int sel, char c)
 	return i - 1;
 }
 
-static char *menu_loop_romsel(char *curr_path, int len)
+static char *menu_loop_romsel(char *curr_path, int len,
+	int (*extra_filter)(struct dirent **namelist, int count,
+			    const char *basedir))
 {
-	struct dirent **namelist;
-	int n, inp, sel = 0;
-	char *ret = NULL, *fname = NULL;
+	static char rom_fname_reload[256]; // used for return
+	char sel_fname[256];
+	int (*filter)(const struct dirent *);
+	struct dirent **namelist = NULL;
+	int n = 0, inp = 0, sel = 0, show_help = 0;
+	char *curr_path_restore = NULL;
+	char *ret = NULL;
 	char cinp;
 
-rescan:
+	sel_fname[0] = 0;
+
 	// is this a dir or a full path?
 	if (!plat_is_dir(curr_path)) {
 		char *p = curr_path + strlen(curr_path) - 1;
 		for (; p > curr_path && *p != '/'; p--)
 			;
 		*p = 0;
-		fname = p+1;
+		curr_path_restore = p;
+		snprintf(sel_fname, sizeof(sel_fname), "%s", p + 1);
+
+		show_help = 2;
 	}
 
-	n = scandir(curr_path, &namelist, scandir_filter, (void *)scandir_cmp);
+rescan:
+	if (namelist != NULL) {
+		while (n-- > 0)
+			free(namelist[n]);
+		free(namelist);
+		namelist = NULL;
+	}
+
+	filter = NULL;
+	if (!g_menu_filter_off)
+		filter = scandir_filter;
+
+	n = scandir(curr_path, &namelist, filter, (void *)scandir_cmp);
 	if (n < 0) {
 		char *t;
 		lprintf("menu_loop_romsel failed, dir: %s\n", curr_path);
@@ -963,7 +1009,7 @@ rescan:
 		t = getcwd(curr_path, len);
 		if (t == NULL)
 			plat_get_root_dir(curr_path, len);
-		n = scandir(curr_path, &namelist, scandir_filter, (void *)scandir_cmp);
+		n = scandir(curr_path, &namelist, filter, (void *)scandir_cmp);
 		if (n < 0) {
 			// oops, we failed
 			lprintf("menu_loop_romsel failed, dir: %s\n", curr_path);
@@ -971,13 +1017,17 @@ rescan:
 		}
 	}
 
-	// try to find sel
+	if (!g_menu_filter_off && extra_filter != NULL)
+		n = extra_filter(namelist, n, curr_path);
+
+	// try to find selected file
 	// note: we don't show '.' so sel is namelist index - 1
-	if (fname != NULL) {
+	sel = 0;
+	if (sel_fname[0] != 0) {
 		int i;
 		for (i = 1; i < n; i++) {
 			char *dname = namelist[i]->d_name;
-			if (dname[0] == fname[0] && strcmp(dname, fname) == 0) {
+			if (dname[0] == sel_fname[0] && strcmp(dname, sel_fname) == 0) {
 				sel = i - 1;
 				break;
 			}
@@ -985,15 +1035,16 @@ rescan:
 	}
 
 	/* make sure action buttons are not pressed on entering menu */
-	draw_dirlist(curr_path, namelist, n, sel);
+	draw_dirlist(curr_path, namelist, n, sel, show_help);
 	while (in_menu_wait_any(NULL, 50) & (PBTN_MOK|PBTN_MBACK|PBTN_MENU))
 		;
 
 	for (;;)
 	{
-		draw_dirlist(curr_path, namelist, n, sel);
-		inp = in_menu_wait(PBTN_UP|PBTN_DOWN|PBTN_LEFT|PBTN_RIGHT|
-			PBTN_L|PBTN_R|PBTN_MA2|PBTN_MOK|PBTN_MBACK|PBTN_MENU|PBTN_CHAR, &cinp, 33);
+		draw_dirlist(curr_path, namelist, n, sel, show_help);
+		inp = in_menu_wait(PBTN_UP|PBTN_DOWN|PBTN_LEFT|PBTN_RIGHT
+			| PBTN_L|PBTN_R|PBTN_MA2|PBTN_MA3|PBTN_MOK|PBTN_MBACK
+			| PBTN_MENU|PBTN_CHAR, &cinp, 33);
 		if (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = n-2; }
 		if (inp & PBTN_DOWN)  { sel++;   if (sel > n-2) sel = 0; }
 		if (inp & PBTN_LEFT)  { sel-=10; if (sel < 0)   sel = 0; }
@@ -1001,23 +1052,24 @@ rescan:
 		if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-2) sel = n-2; }
 		if (inp & PBTN_R)     { sel+=24; if (sel > n-2) sel = n-2; }
 		if (inp & PBTN_CHAR)  sel = dirent_seek_char(namelist, n, sel, cinp);
+		if (inp & PBTN_MA3)   {
+			g_menu_filter_off = !g_menu_filter_off;
+			snprintf(sel_fname, sizeof(sel_fname), "%s",
+				namelist[sel+1]->d_name);
+			goto rescan;
+		}
 		if ((inp & PBTN_MOK) || (inp & (PBTN_MENU|PBTN_MA2)) == (PBTN_MENU|PBTN_MA2))
 		{
 			again:
 			if (namelist[sel+1]->d_type == DT_REG)
 			{
-				strcpy(rom_fname_reload, curr_path);
-				strcat(rom_fname_reload, "/");
-				strcat(rom_fname_reload, namelist[sel+1]->d_name);
+				snprintf(rom_fname_reload, sizeof(rom_fname_reload),
+					"%s/%s", curr_path, namelist[sel+1]->d_name);
 				if (inp & PBTN_MOK) { // return sel
 					ret = rom_fname_reload;
 					break;
 				}
 				do_delete(rom_fname_reload, namelist[sel+1]->d_name);
-				if (n > 0) {
-					while (n--) free(namelist[n]);
-					free(namelist);
-				}
 				goto rescan;
 			}
 			else if (namelist[sel+1]->d_type == DT_DIR)
@@ -1044,7 +1096,7 @@ rescan:
 					strcat(newdir, "/");
 					strcat(newdir, namelist[sel+1]->d_name);
 				}
-				ret = menu_loop_romsel(newdir, newlen);
+				ret = menu_loop_romsel(newdir, newlen, extra_filter);
 				free(newdir);
 				break;
 			}
@@ -1052,9 +1104,8 @@ rescan:
 			{
 				// unknown file type, happens on NTFS mounts. Try to guess.
 				FILE *tstf; int tmp;
-				strcpy(rom_fname_reload, curr_path);
-				strcat(rom_fname_reload, "/");
-				strcat(rom_fname_reload, namelist[sel+1]->d_name);
+				snprintf(rom_fname_reload, sizeof(rom_fname_reload),
+					"%s/%s", curr_path, namelist[sel+1]->d_name);
 				tstf = fopen(rom_fname_reload, "rb");
 				if (tstf != NULL)
 				{
@@ -1068,19 +1119,20 @@ rescan:
 		}
 		if (inp & PBTN_MBACK)
 			break;
+
+		if (show_help > 0)
+			show_help--;
 	}
 
 	if (n > 0) {
-		while (n--) free(namelist[n]);
+		while (n-- > 0)
+			free(namelist[n]);
 		free(namelist);
 	}
 
 	// restore curr_path
-	if (fname != NULL) {
-		n = strlen(curr_path);
-		if (curr_path + n + 1 == fname)
-			curr_path[n] = '/';
-	}
+	if (curr_path_restore != NULL)
+		*curr_path_restore = '/';
 
 	return ret;
 }
