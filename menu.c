@@ -922,8 +922,11 @@ static int scandir_cmp(const void *p1, const void *p2)
 	return alphasort(d1, d2);
 }
 
+static const char **filter_exts_internal;
+
 static int scandir_filter(const struct dirent *ent)
 {
+	const char **filter = filter_exts_internal;
 	const char *ext;
 	int i;
 
@@ -938,8 +941,8 @@ static int scandir_filter(const struct dirent *ent)
 		return 0;
 
 	ext++;
-	for (i = 0; i < array_size(filter_exts); i++)
-		if (strcasecmp(ext, filter_exts[i]) == 0)
+	for (i = 0; filter[i] != NULL; i++)
+		if (strcasecmp(ext, filter[i]) == 0)
 			return 1;
 
 	return 0;
@@ -961,7 +964,8 @@ static int dirent_seek_char(struct dirent **namelist, int len, int sel, char c)
 	return i - 1;
 }
 
-static char *menu_loop_romsel(char *curr_path, int len,
+static const char *menu_loop_romsel(char *curr_path, int len,
+	const char **filter_exts,
 	int (*extra_filter)(struct dirent **namelist, int count,
 			    const char *basedir))
 {
@@ -971,9 +975,10 @@ static char *menu_loop_romsel(char *curr_path, int len,
 	struct dirent **namelist = NULL;
 	int n = 0, inp = 0, sel = 0, show_help = 0;
 	char *curr_path_restore = NULL;
-	char *ret = NULL;
+	const char *ret = NULL;
 	char cinp;
 
+	filter_exts_internal = filter_exts;
 	sel_fname[0] = 0;
 
 	// is this a dir or a full path?
@@ -985,7 +990,8 @@ static char *menu_loop_romsel(char *curr_path, int len,
 		curr_path_restore = p;
 		snprintf(sel_fname, sizeof(sel_fname), "%s", p + 1);
 
-		show_help = 2;
+		if (rom_fname_reload[0] == 0)
+			show_help = 2;
 	}
 
 rescan:
@@ -1096,7 +1102,7 @@ rescan:
 					strcat(newdir, "/");
 					strcat(newdir, namelist[sel+1]->d_name);
 				}
-				ret = menu_loop_romsel(newdir, newlen, extra_filter);
+				ret = menu_loop_romsel(newdir, newlen, filter_exts, extra_filter);
 				free(newdir);
 				break;
 			}
