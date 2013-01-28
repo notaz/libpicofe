@@ -222,8 +222,10 @@ int plat_sdl_init(void)
 
   SDL_VERSION(&wminfo.version);
   SDL_GetWMInfo(&wminfo);
+#ifdef SDL_VIDEO_DRIVER_X11
   display = wminfo.info.x11.display;
   window = (void *)wminfo.info.x11.window;
+#endif
 
   ret = gl_init(display, window, &gl_quirks);
   if (ret == 0) {
