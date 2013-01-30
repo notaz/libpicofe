@@ -26,6 +26,7 @@ SDL_Overlay *plat_sdl_overlay;
 int plat_sdl_gl_active;
 void (*plat_sdl_quit_cb)(void);
 
+static char vid_drv_name[32];
 static int window_w, window_h;
 static int fs_w, fs_h;
 static int old_fullscreen;
@@ -164,7 +165,6 @@ int plat_sdl_init(void)
   static const char *vout_list[] = { NULL, NULL, NULL, NULL };
   const SDL_VideoInfo *info;
   SDL_SysWMinfo wminfo;
-  char vid_drv_name[64];
   int overlay_works = 0;
   int gl_works = 0;
   int i, ret, h;
@@ -179,6 +179,7 @@ int plat_sdl_init(void)
   if (info != NULL) {
     fs_w = info->current_w;
     fs_h = info->current_h;
+    printf("plat_sdl: using %dx%d as fullscreen resolution\n", fs_w, fs_h);
   }
 
   g_menuscreen_w = 640;
@@ -213,7 +214,7 @@ int plat_sdl_init(void)
   plat_sdl_overlay = SDL_CreateYUVOverlay(plat_sdl_screen->w, plat_sdl_screen->h,
     SDL_UYVY_OVERLAY, plat_sdl_screen);
   if (plat_sdl_overlay != NULL) {
-    printf("overlay: fmt %x, planes: %d, pitch: %d, hw: %d\n",
+    printf("plat_sdl: overlay: fmt %x, planes: %d, pitch: %d, hw: %d\n",
       plat_sdl_overlay->format, plat_sdl_overlay->planes, *plat_sdl_overlay->pitches,
       plat_sdl_overlay->hw_overlay);
 
@@ -276,6 +277,10 @@ void plat_sdl_finish(void)
     gl_finish();
     plat_sdl_gl_active = 0;
   }
+  // restore back to initial resolution
+  // resolves black screen issue on R-Pi
+  if (strcmp(vid_drv_name, "x11") != 0)
+    SDL_SetVideoMode(fs_w, fs_h, 16, SDL_SWSURFACE);
   SDL_Quit();
 }
 
