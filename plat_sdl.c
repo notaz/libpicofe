@@ -24,6 +24,7 @@
 SDL_Surface *plat_sdl_screen;
 SDL_Overlay *plat_sdl_overlay;
 int plat_sdl_gl_active;
+void (*plat_sdl_quit_cb)(void);
 
 static int window_w, window_h;
 static int fs_w, fs_h;
@@ -123,7 +124,8 @@ void plat_sdl_event_handler(void *event_)
   static int was_active;
   SDL_Event *event = event_;
 
-  if (event->type == SDL_VIDEORESIZE) {
+  switch (event->type) {
+  case SDL_VIDEORESIZE:
     //printf("resize %dx%d\n", event->resize.w, event->resize.h);
     if (plat_target.vout_method != 0
         && !plat_target.vout_fullscreen && !old_fullscreen)
@@ -132,8 +134,8 @@ void plat_sdl_event_handler(void *event_)
       window_h = event->resize.h;
       plat_sdl_change_video_mode(0, 0, 1);
     }
-  }
-  else if (event->type == SDL_ACTIVEEVENT) {
+    break;
+  case SDL_ACTIVEEVENT:
     if (event->active.gain && !was_active) {
       if (plat_sdl_overlay != NULL) {
         SDL_Rect dstrect = { 0, 0, plat_sdl_screen->w, plat_sdl_screen->h };
@@ -149,6 +151,11 @@ void plat_sdl_event_handler(void *event_)
       // else SDL takes care of it
     }
     was_active = event->active.gain;
+    break;
+  case SDL_QUIT:
+    if (plat_sdl_quit_cb != NULL)
+      plat_sdl_quit_cb();
+    break;
   }
 }
 
@@ -157,6 +164,7 @@ int plat_sdl_init(void)
   static const char *vout_list[] = { NULL, NULL, NULL, NULL };
   const SDL_VideoInfo *info;
   SDL_SysWMinfo wminfo;
+  char vid_drv_name[64];
   int overlay_works = 0;
   int gl_works = 0;
   int i, ret, h;
@@ -220,11 +228,17 @@ int plat_sdl_init(void)
   else
     fprintf(stderr, "overlay is not available.\n");
 
-  SDL_VERSION(&wminfo.version);
-  SDL_GetWMInfo(&wminfo);
+  // get x11 display/window for GL
+  SDL_VideoDriverName(vid_drv_name, sizeof(vid_drv_name));
 #ifdef SDL_VIDEO_DRIVER_X11
-  display = wminfo.info.x11.display;
-  window = (void *)wminfo.info.x11.window;
+  if (strcmp(vid_drv_name, "x11") == 0) {
+    SDL_VERSION(&wminfo.version);
+    ret = SDL_GetWMInfo(&wminfo);
+    if (ret > 0) {
+      display = wminfo.info.x11.display;
+      window = (void *)wminfo.info.x11.window;
+    }
+  }
 #endif
 
   ret = gl_init(display, window, &gl_quirks);
