@@ -10,6 +10,10 @@ static EGLDisplay edpy;
 static EGLSurface esfc;
 static EGLContext ectxt;
 
+/* for external flips */
+void *gl_es_display;
+void *gl_es_surface;
+
 static int gl_have_error(const char *name)
 {
 	GLenum e = glGetError();
@@ -119,6 +123,8 @@ int gl_init(void *display, void *window, int *quirks)
 	if (gl_have_error("init"))
 		goto out;
 
+	gl_es_display = (void *)edpy;
+	gl_es_surface = (void *)esfc;
 	retval = 0;
 out:
 	free(tmp_texture_mem);
@@ -184,6 +190,9 @@ void gl_finish(void)
 	esfc = EGL_NO_SURFACE;
 	eglTerminate(edpy);
 	edpy = EGL_NO_DISPLAY;
+
+	gl_es_display = (void *)edpy;
+	gl_es_surface = (void *)esfc;
 
 	gl_platform_finish();
 }
