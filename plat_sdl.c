@@ -24,6 +24,7 @@
 SDL_Surface *plat_sdl_screen;
 SDL_Overlay *plat_sdl_overlay;
 int plat_sdl_gl_active;
+void (*plat_sdl_resize_cb)(int w, int h);
 void (*plat_sdl_quit_cb)(void);
 
 static char vid_drv_name[32];
@@ -117,6 +118,9 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   }
 
   old_fullscreen = plat_target.vout_fullscreen;
+  if (plat_sdl_resize_cb != NULL)
+    plat_sdl_resize_cb(plat_sdl_screen->w, plat_sdl_screen->h);
+
   return 0;
 }
 
