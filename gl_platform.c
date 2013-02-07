@@ -15,11 +15,18 @@
  */
 #include <bcm_host.h>
 #include <X11/Xlib.h>
+#include <dlfcn.h>
 
 static Display *x11display;
 static Window x11window;
 static DISPMANX_DISPLAY_HANDLE_T m_dispmanDisplay;
 static EGL_DISPMANX_WINDOW_T m_nativeWindow;
+
+static void *x11lib;
+#define FPTR(f) typeof(f) * p##f
+static FPTR(XGetGeometry);
+static FPTR(XGetWindowAttributes);
+static FPTR(XTranslateCoordinates);
 
 static void get_window_rect(VC_RECT_T *rect)
 {
@@ -41,14 +48,14 @@ static void get_window_rect(VC_RECT_T *rect)
 	if (x11display == NULL || x11window == 0)
 		return; // use fullscreen
 
-	XGetGeometry(x11display, x11window, &root, &dx, &dy, &dw, &dh,
+	pXGetGeometry(x11display, x11window, &root, &dx, &dy, &dw, &dh,
 		&dummy, &dummy);
-	XGetWindowAttributes(x11display, root, &xattrs_root);
+	pXGetWindowAttributes(x11display, root, &xattrs_root);
 
 	if (dw == xattrs_root.width && dh == xattrs_root.height)
 		return; // use fullscreen
 
-	XTranslateCoordinates(x11display, x11window, root,
+	pXTranslateCoordinates(x11display, x11window, root,
 		dx, dy, &dx, &dy, &dummyw);
 
 	// how to deal with that weird centering thing?
@@ -87,8 +94,21 @@ static void submit_rect(void)
 
 int gl_platform_init(void **display, void **window, int *quirks)
 {
-	x11display = *display;
-	x11window = (Window)*window;
+	x11display = NULL;
+	x11window = 0;
+
+	x11lib = dlopen("libX11.so.6", RTLD_LAZY);
+	if (x11lib != NULL) {
+		pXGetGeometry = dlsym(x11lib, "XGetGeometry");
+		pXGetWindowAttributes = dlsym(x11lib, "XGetWindowAttributes");
+		pXTranslateCoordinates = dlsym(x11lib, "XTranslateCoordinates");
+		if (pXGetGeometry != NULL && pXGetWindowAttributes != NULL
+		    && pXTranslateCoordinates != NULL)
+		{
+			x11display = *display;
+			x11window = (Window)*window;
+		}
+	}
 
 	bcm_host_init();
 	submit_rect();
@@ -104,6 +124,14 @@ void gl_platform_finish(void)
 {
 	vc_dispmanx_display_close(m_dispmanDisplay);
 	bcm_host_deinit();
+
+	if (x11lib) {
+		dlclose(x11lib);
+		x11lib = NULL;
+	}
+
+	x11display = NULL;
+	x11window = 0;
 }
 
 #else
