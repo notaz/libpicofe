@@ -137,7 +137,7 @@ int plat_wait_event(int *fds_hnds, int count, int timeout_ms)
 
 void *plat_mmap(unsigned long addr, size_t size, int need_exec, int is_fixed)
 {
-	static int hugetlb_disabled;
+	static int hugetlb_warned;
 	int prot = PROT_READ | PROT_WRITE;
 	int flags = MAP_PRIVATE | MAP_ANONYMOUS;
 	void *req, *ret;
@@ -147,15 +147,17 @@ void *plat_mmap(unsigned long addr, size_t size, int need_exec, int is_fixed)
 		prot |= PROT_EXEC;
 	if (is_fixed)
 		flags |= MAP_FIXED;
-	if (size >= HUGETLB_THRESHOLD && !hugetlb_disabled)
+	if (size >= HUGETLB_THRESHOLD)
 		flags |= MAP_HUGETLB;
 
 	ret = mmap(req, size, prot, flags, -1, 0);
 	if (ret == MAP_FAILED && (flags & MAP_HUGETLB)) {
-		fprintf(stderr,
-			"warning: failed to do hugetlb mmap (%p, %zu): %d\n",
-			req, size, errno);
-		hugetlb_disabled = 1;
+		if (!hugetlb_warned) {
+			fprintf(stderr,
+				"warning: failed to do hugetlb mmap (%p, %zu): %d\n",
+				req, size, errno);
+			hugetlb_warned = 1;
+		}
 		flags &= ~MAP_HUGETLB;
 		ret = mmap(req, size, prot, flags, -1, 0);
 	}
