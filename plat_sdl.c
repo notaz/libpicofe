@@ -49,6 +49,15 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   else
     prev_h = h;
 
+  // invalid method might come from config..
+  if (plat_target.vout_method != 0
+      && plat_target.vout_method != vout_mode_overlay
+      && plat_target.vout_method != vout_mode_gl)
+  {
+    fprintf(stderr, "invalid vout_method: %d\n", plat_target.vout_method);
+    plat_target.vout_method = 0;
+  }
+
   // skip GL recreation if window doesn't change - avoids flicker
   if (plat_target.vout_method == vout_mode_gl && plat_sdl_gl_active
       && plat_target.vout_fullscreen == old_fullscreen && !force)
@@ -77,6 +86,7 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     }
 
     // XXX: workaround some occasional mysterious deadlock in SDL_SetVideoMode
+    // (seen on r-pi)
     SDL_PumpEvents();
 
     plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 0, flags);
@@ -214,6 +224,14 @@ int plat_sdl_init(void)
   }
   g_menuscreen_w = window_w = plat_sdl_screen->w;
   g_menuscreen_h = window_h = plat_sdl_screen->h;
+
+  // overlay/gl require native bpp in some cases..
+  plat_sdl_screen = SDL_SetVideoMode(g_menuscreen_w, g_menuscreen_h,
+    0, SDL_SWSURFACE);
+  if (plat_sdl_screen == NULL) {
+    fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
+    goto fail;
+  }
 
   plat_sdl_overlay = SDL_CreateYUVOverlay(plat_sdl_screen->w, plat_sdl_screen->h,
     SDL_UYVY_OVERLAY, plat_sdl_screen);
