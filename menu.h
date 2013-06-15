@@ -8,6 +8,9 @@
  * See the COPYING file in the top-level directory.
  */
 
+#ifndef LIBPICOFE_MENU_H
+#define LIBPICOFE_MENU_H
+
 typedef enum
 {
 	MB_NONE = 1,		/* no auto processing */
@@ -123,3 +126,5 @@ void text_out16(int x, int y, const char *texto, ...);
 
 menu_entry *me_list_get_first(void);
 menu_entry *me_list_get_next(void);
+
+#endif // LIBPICOFE_MENU_H

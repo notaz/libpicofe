@@ -1,3 +1,5 @@
+#ifndef LIBPICOFE_XENV_H
+#define LIBPICOFE_XENV_H
 
 #define XENV_CAP_KEYS	(1<<0)
 #define XENV_CAP_MOUSE	(1<<1)
@@ -16,3 +18,4 @@ int  xenv_update(int (*key_cb)(void *cb_arg, int kc, int is_pressed),
 int  xenv_minimize(void);
 void xenv_finish(void);
 
+#endif // LIBPICOFE_XENV_H

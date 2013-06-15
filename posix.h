@@ -1,3 +1,6 @@
+#ifndef LIBPICOFE_POSIX_H
+#define LIBPICOFE_POSIX_H
+
 /* define POSIX stuff: dirent, scandir, getcwd, mkdir */
 #if defined(__linux__) || defined(__MINGW32__)
 
@@ -20,4 +23,4 @@
 
 #endif
 
-
+#endif // LIBPICOFE_POSIX_H

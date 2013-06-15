@@ -1,3 +1,6 @@
+#ifndef LIBPICOFE_READPNG_H
+#define LIBPICOFE_READPNG_H
+
 typedef enum
 {
 	READPNG_BG = 1,
@@ -17,3 +20,5 @@ int writepng(const char *fname, unsigned short *src, int w, int h);
 #ifdef __cplusplus
 }
 #endif
+
+#endif // LIBPICOFE_READPNG_H

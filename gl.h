@@ -1,3 +1,6 @@
+#ifndef LIBPICOFE_GL_H
+#define LIBPICOFE_GL_H
+
 #ifdef HAVE_GLES
 
 int gl_init(void *display, void *window, int *quirks);
@@ -28,3 +31,5 @@ static __inline void gl_finish(void)
 #endif
 
 #define GL_QUIRK_ACTIVATE_RECREATE 1
+
+#endif // LIBPICOFE_GL_H
