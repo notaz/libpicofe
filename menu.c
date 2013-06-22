@@ -983,12 +983,12 @@ static const char *menu_loop_romsel(char *curr_path, int len,
 
 	// is this a dir or a full path?
 	if (!plat_is_dir(curr_path)) {
-		char *p = curr_path + strlen(curr_path) - 1;
-		for (; p > curr_path && *p != '/'; p--)
-			;
-		*p = 0;
-		curr_path_restore = p;
-		snprintf(sel_fname, sizeof(sel_fname), "%s", p + 1);
+		char *p = strrchr(curr_path, '/');
+		if (p != NULL) {
+			*p = 0;
+			curr_path_restore = p;
+			snprintf(sel_fname, sizeof(sel_fname), "%s", p + 1);
+		}
 
 		if (rom_fname_reload[0] == 0)
 			show_help = 2;
