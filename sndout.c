@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "linux/sndout_oss.h"
+#include "linux/sndout_alsa.h"
 #include "sndout_sdl.h"
 #include "sndout.h"
 
@@ -57,6 +58,9 @@ static struct sndout_driver sndout_avail[] =
 {
 #ifdef HAVE_SDL
 	SNDOUT_DRIVER(sdl),
+#endif
+#ifdef HAVE_ALSA
+	SNDOUT_DRIVER(alsa),
 #endif
 #ifdef HAVE_OSS
 	SNDOUT_DRIVER(oss),
