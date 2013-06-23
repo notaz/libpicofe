@@ -20,6 +20,8 @@
 
 #include "sndout_oss.h"
 
+int sndout_oss_frag_frames = 1;
+
 static int sounddev = -1, mixerdev = -1;
 static int can_write_safe;
 
@@ -47,7 +49,7 @@ void sndout_oss_stop(void)
 	sounddev = -1;
 }
 
-int sndout_oss_start(int rate, int stereo, int frames_in_frag)
+int sndout_oss_start(int rate, int stereo)
 {
 	static int s_oldrate = 0, s_oldstereo = 0;
 	int frag, bsize, bits, ret;
@@ -69,10 +71,11 @@ int sndout_oss_start(int rate, int stereo, int frames_in_frag)
 		}
 	}
 
-	// try to fit frames_in_frag frames worth of data in fragment
+	// try to fit sndout_oss_frag_frames (video) frames
+	// worth of sound data in OSS fragment
 	// ignore mono because it's unlikely to be used and
 	// both GP2X and Wiz mixes mono to stereo anyway.
-	bsize = (frames_in_frag * rate / 50) * 4;
+	bsize = (sndout_oss_frag_frames * rate / 50) * 4;
 
 	for (frag = 0; bsize; bsize >>= 1, frag++)
 		;
@@ -164,8 +167,9 @@ int sndout_oss_can_write(int bytes)
 	return bi.bytes - bi.fragsize >= bytes ? 1 : 0;
 }
 
-void sndout_oss_sync(void)
+void sndout_oss_wait(void)
 {
+	// FIXME?
 	ioctl(sounddev, SOUND_PCM_SYNC, 0);
 }
 
