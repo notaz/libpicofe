@@ -262,6 +262,8 @@ int plat_sdl_init(void)
       window = (void *)wminfo.info.x11.window;
     }
   }
+#else
+  (void)wminfo;
 #endif
 
   ret = gl_init(display, window, &gl_quirks);
