@@ -2,7 +2,7 @@
 #include <sys/syscall.h>
 
 
-.global cache_flush_d_inval_i @ const void *start_addr, const void *end_addr
+.global cache_flush_d_inval_i @ void *start_addr, void *end_addr
 
 cache_flush_d_inval_i:
     mov     r2, #0
