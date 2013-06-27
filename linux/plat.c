@@ -200,6 +200,16 @@ void plat_munmap(void *ptr, size_t size)
 	}
 }
 
+int plat_mem_set_exec(void *ptr, size_t size)
+{
+	int ret = mprotect(ptr, size, PROT_READ | PROT_WRITE | PROT_EXEC);
+	if (ret != 0)
+		fprintf(stderr, "mprotect(%p, %zd) failed: %d\n",
+			ptr, size, errno);
+
+	return ret;
+}
+
 /* lprintf */
 void lprintf(const char *fmt, ...)
 {
