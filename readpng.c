@@ -68,23 +68,28 @@ int readpng(void *dest, const char *fname, readpng_what what, int req_w, int req
 	{
 		case READPNG_BG:
 		{
-			int height, width, h;
+			int height, width, h, x_ofs = 0, y_ofs = 0;
 			unsigned short *dst = dest;
+
 			if (png_get_bit_depth(png_ptr, info_ptr) != 8)
 			{
 				lprintf(__FILE__ ": bg image uses %ibpc, needed 8bpc\n", png_get_bit_depth(png_ptr, info_ptr));
 				break;
 			}
 			width = png_get_image_width(png_ptr, info_ptr);
-			if (width > req_w)
+			if (width > req_w) {
+				x_ofs = (width - req_w) / 2;
 				width = req_w;
+			}
 			height = png_get_image_height(png_ptr, info_ptr);
-			if (height > req_h)
+			if (height > req_h) {
+				y_ofs = (height - req_h) / 2;
 				height = req_h;
+			}
 
 			for (h = 0; h < height; h++)
 			{
-				unsigned char *src = row_ptr[h];
+				unsigned char *src = row_ptr[h + y_ofs] + x_ofs * 3;
 				int len = width;
 				while (len--)
 				{
