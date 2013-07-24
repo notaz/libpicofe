@@ -256,10 +256,11 @@ static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
 {
 	int kc = -1, down = 0, ret = 0;
 
-	/* FIXME: should ckeck .which */
 	/* TODO: remaining axis */
 	switch (event->type) {
 	case SDL_JOYAXISMOTION:
+		if (event->jaxis.which != state->joy_id)
+			return -2;
 		if (event->jaxis.axis > 1)
 			break;
 		if (-16384 <= event->jaxis.value && event->jaxis.value <= 16384) {
@@ -289,6 +290,8 @@ static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
 
 	case SDL_JOYBUTTONDOWN:
 	case SDL_JOYBUTTONUP:
+		if (event->jbutton.which != state->joy_id)
+			return -2;
 		kc = (int)event->jbutton.button + SDLK_WORLD_0;
 		down = event->jbutton.state == SDL_PRESSED;
 		ret = 1;
@@ -316,30 +319,48 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 	Uint32 mask = state->joy ? JOY_EVENTS : (SDL_ALLEVENTS & ~JOY_EVENTS);
 	int count, maxcount;
 	int i, ret, retval = 0;
+	int num_events, num_peeped_events;
+	SDL_Event *event;
 
 	maxcount = (one_kc != NULL) ? 1 : sizeof(events) / sizeof(events[0]);
 
 	SDL_PumpEvents();
-	while (1) {
+
+	num_events = SDL_PeepEvents(NULL, 0, SDL_PEEKEVENT, mask);
+
+	for (num_peeped_events = 0; num_peeped_events < num_events; num_peeped_events += count) {
 		count = SDL_PeepEvents(events, maxcount, SDL_GETEVENT, mask);
 		if (count <= 0)
 			break;
 		for (i = 0; i < count; i++) {
+			event = &events[i];
 			if (state->joy)
 				ret = handle_joy_event(state,
-					&events[i], one_kc, one_down);
+					event, one_kc, one_down);
 			else
 				ret = handle_event(state,
-					&events[i], one_kc, one_down);
-			if (ret == -1) {
-				if (ext_event_handler != NULL)
-					ext_event_handler(&events[i]);
+					event, one_kc, one_down);
+			if (ret < 0) {
+				switch (ret) {
+					case -2:
+						SDL_PushEvent(event);
+						break;
+					default:
+						if (ext_event_handler != NULL)
+							ext_event_handler(event);
+						break;
+				}
 				continue;
 			}
 
 			retval |= ret;
 			if (one_kc != NULL && ret)
+			{
+				// don't lose events other devices might want to handle
+				for (i++; i < count; i++)
+					SDL_PushEvent(&events[i]);
 				goto out;
+			}
 		}
 	}
 
