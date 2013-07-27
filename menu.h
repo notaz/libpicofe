@@ -112,13 +112,8 @@ extern me_bind_action emuctrl_actions[];	// platform code
 extern void *g_menubg_src_ptr;
 extern void *g_menubg_ptr;
 extern void *g_menuscreen_ptr;
-#if MSCREEN_SIZE_FIXED
-#define g_menuscreen_w MSCREEN_WIDTH
-#define g_menuscreen_h MSCREEN_HEIGHT
-#else
 extern int g_menuscreen_w;
 extern int g_menuscreen_h;
-#endif
 
 void menu_init_base(void);
 void menu_update_msg(const char *msg);

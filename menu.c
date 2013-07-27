@@ -31,10 +31,8 @@ void *g_menuscreen_ptr;
 void *g_menubg_src_ptr;
 void *g_menubg_ptr;
 
-#if !MSCREEN_SIZE_FIXED
 int g_menuscreen_w;
 int g_menuscreen_h;
-#endif
 
 static unsigned char *menu_font_data = NULL;
 static int menu_text_color = 0xfffe; // default to white
