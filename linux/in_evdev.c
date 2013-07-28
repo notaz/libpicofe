@@ -61,7 +61,7 @@ int in_evdev_allow_abs_only;
 #define IN_EVDEV_PREFIX "evdev:"
 
 static const char * const in_evdev_keys[KEY_CNT] = {
-	[0 ... KEY_MAX] = NULL,
+	// [0 ... KEY_MAX] = NULL, // not necessary
 	[KEY_RESERVED] = "Reserved",		[KEY_ESC] = "Esc",
 	[KEY_1] = "1",				[KEY_2] = "2",
 	[KEY_3] = "3",				[KEY_4] = "4",

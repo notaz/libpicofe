@@ -123,7 +123,6 @@ static const char * const in_sdl_keys[SDLK_LAST] = {
 	[SDLK_DOWN] = "down",
 	[SDLK_RIGHT] = "right",
 	[SDLK_LEFT] = "left",
-	[SDLK_DOWN] = "down",
 	[SDLK_INSERT] = "insert",
 	[SDLK_HOME] = "home",
 	[SDLK_END] = "end",
