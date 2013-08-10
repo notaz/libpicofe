@@ -25,11 +25,13 @@ static struct disassemble_info di;
 #ifdef __arm__
 #define print_insn_func print_insn_little_arm
 #define BFD_ARCH bfd_arch_arm
-#define BFD_MACH bfd_mach_arm_4T
+#define BFD_MACH bfd_mach_arm_unknown
+#define DASM_OPTS "reg-names-std"
 #else
 #define print_insn_func print_insn_i386_intel
 #define BFD_ARCH bfd_arch_i386
 #define BFD_MACH bfd_mach_i386_i386_intel_syntax
+#define DASM_OPTS NULL
 #endif
 
 /* symbols */
@@ -181,6 +183,7 @@ static void host_dasm_init(void)
   di.arch = BFD_ARCH;
   di.mach = BFD_MACH;
   di.endian = BFD_ENDIAN_LITTLE;
+  di.disassembler_options = DASM_OPTS;
   disassemble_init_for_target(&di);
   init_done = 1;
 }
