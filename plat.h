@@ -15,7 +15,7 @@ struct plat_target {
 	int (*hwfilter_set)(int which);
 	int (*lcdrate_set)(int is_pal);
 	int (*gamma_set)(int val, int black_level);
-	int (*step_volume)(int is_up);
+	int (*step_volume)(int *volume, int diff);
 	const char **vout_methods;
 	int vout_method;
 	int vout_fullscreen;
@@ -76,10 +76,10 @@ static __inline int plat_target_gamma_set(int val, int black_level)
 }
 
 /* step sound volume up or down */
-static __inline int plat_target_step_volume(int is_up)
+static __inline int plat_target_step_volume(int *volume, int diff)
 {
 	if (plat_target.step_volume)
-		return plat_target.step_volume(is_up);
+		return plat_target.step_volume(volume, diff);
 	return -1;
 }
 

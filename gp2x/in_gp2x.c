@@ -18,6 +18,8 @@
 #include <unistd.h>
 
 #include "../input.h"
+#include "soc.h"
+#include "plat_gp2x.h"
 #include "in_gp2x.h"
 
 #define IN_GP2X_PREFIX "gp2x:"
@@ -47,15 +49,14 @@ static const char *in_gp2x_keys[IN_GP2X_NBUTTONS] = {
 
 static int in_gp2x_get_mmsp2_bits(void)
 {
-	extern volatile unsigned short *gp2x_memregs;
 	int value;
-	value = gp2x_memregs[0x1198>>1] & 0xff; // GPIO M
+	value = memregs[0x1198>>1] & 0xff; // GPIO M
 	if (value == 0xFD) value = 0xFA;
 	if (value == 0xF7) value = 0xEB;
 	if (value == 0xDF) value = 0xAF;
 	if (value == 0x7F) value = 0xBE;
-	value |= gp2x_memregs[0x1184>>1] & 0xFF00; // GPIO C
-	value |= gp2x_memregs[0x1186>>1] << 16; // GPIO D
+	value |= memregs[0x1184>>1] & 0xFF00; // GPIO C
+	value |= memregs[0x1186>>1] << 16; // GPIO D
 	value = ~value & 0x08c0ff55;
 
 	return value;
@@ -87,17 +88,6 @@ static int in_gp2x_get_wiz_bits(void)
 	return value;
 }
 
-#ifdef FAKE_IN_GP2X
-volatile unsigned short *gp2x_memregs;
-int gp2x_dev_id = -1;
-
-static int in_gp2x_get_fake_bits(void)
-{
-	extern int current_keys;
-	return current_keys;
-}
-#endif
-
 static void in_gp2x_probe(void)
 {
 	switch (gp2x_dev_id)
@@ -115,10 +105,6 @@ static void in_gp2x_probe(void)
 		break;
 	// we'll use evdev for Caanoo
 	default:
-#ifdef FAKE_IN_GP2X
-		in_gp2x_get_bits = in_gp2x_get_fake_bits;
-		break;
-#endif
 		return;
 	}
 

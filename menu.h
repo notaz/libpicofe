@@ -88,8 +88,11 @@ typedef struct
 #define mee_onoff_cust(name, id, var, mask, name_func) \
 	{ name, MB_OPT_CUSTONOFF, id, &(var), mask, 0, 0, 1, 1, 1, NULL, name_func, NULL, NULL }
 
+#define mee_range_cust_h(name, id, var, min, max, name_func, help) \
+	{ name, MB_OPT_CUSTRANGE, id, &(var), 0, min, max, 1, 1, 1, NULL, name_func, NULL, help }
+
 #define mee_range_cust(name, id, var, min, max, name_func) \
-	{ name, MB_OPT_CUSTRANGE, id, &(var), 0, min, max, 1, 1, 1, NULL, name_func, NULL, NULL }
+	mee_range_cust_h(name, id, var, min, max, name_func, NULL)
 
 #define mee_enum_h(name, id, var, names_list, help) \
 	{ name, MB_OPT_ENUM, id, &(var), 0, 0, 0, 1, 1, 1, NULL, NULL, names_list, help }

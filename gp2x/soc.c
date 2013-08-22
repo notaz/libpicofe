@@ -19,26 +19,12 @@
 
 #include "soc.h"
 
-void (*gp2x_video_flip)(void);
-void (*gp2x_video_flip2)(void);
-void (*gp2x_video_changemode_ll)(int bpp);
-void (*gp2x_video_setpalette)(int *pal, int len);
-void (*gp2x_video_RGB_setscaling)(int ln_offs, int W, int H);
-void (*gp2x_video_wait_vsync)(void);
-
-void (*gp2x_set_cpuclk)(unsigned int mhz);
-
-void (*set_lcd_custom_rate)(int is_pal);
-void (*unset_lcd_custom_rate)(void);
-void (*set_lcd_gamma)(int g100, int A_SNs_curve);
-
-void (*set_ram_timings)(void);
-void (*unset_ram_timings)(void);
-int  (*gp2x_read_battery)(void);
+volatile unsigned short *memregs;
+volatile unsigned int   *memregl;
+int memdev = -1;
 
 unsigned int (*gp2x_get_ticks_ms)(void);
 unsigned int (*gp2x_get_ticks_us)(void);
-
 
 gp2x_soc_t soc_detect(void)
 {
@@ -47,26 +33,27 @@ gp2x_soc_t soc_detect(void)
 	static gp2x_soc_t ret = -2;
 	int pollux_chipname[0x30/4 + 1];
 	char *pollux_chipname_c = (char *)pollux_chipname;
-	int memdev;
+	int memdev_tmp;
 	int i;
 
 	if ((int)ret != -2)
 		/* already detected */
 		return ret;
 
-  	memdev = open("/dev/mem", O_RDONLY);
-	if (memdev == -1)
+  	memdev_tmp = open("/dev/mem", O_RDONLY);
+	if (memdev_tmp == -1)
 	{
 		perror("open(/dev/mem)");
 		ret = -1;
 		return -1;
 	}
 
-	memregs = mmap(0, 0x20000, PROT_READ, MAP_SHARED, memdev, 0xc0000000);
+	memregs = mmap(0, 0x20000, PROT_READ, MAP_SHARED,
+		memdev_tmp, 0xc0000000);
 	if (memregs == MAP_FAILED)
 	{
 		perror("mmap(memregs)");
-		close(memdev);
+		close(memdev_tmp);
 		ret = -1;
 		return -1;
 	}
@@ -106,7 +93,7 @@ gp2x_soc_t soc_detect(void)
 not_pollux_like:
 out:
 	munmap((void *)memregs, 0x20000);
-	close(memdev);
+	close(memdev_tmp);
 	return ret;	
 }
 

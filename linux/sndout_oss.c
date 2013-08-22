@@ -41,6 +41,11 @@ int sndout_oss_init(void)
 
 void sndout_oss_stop(void)
 {
+#ifdef __GP2X__
+	/* restarting audio on GP2X causes trouble */
+	return;
+#endif
+
 	if (sounddev < 0)
 		return;
 
