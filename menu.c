@@ -34,6 +34,8 @@ void *g_menubg_ptr;
 int g_menuscreen_w;
 int g_menuscreen_h;
 
+int g_autostateld_opt;
+
 static unsigned char *menu_font_data = NULL;
 static int menu_text_color = 0xfffe; // default to white
 static int menu_sel_color = -1; // disabled
@@ -896,10 +898,16 @@ static void draw_dirlist(char *curdir, struct dirent **namelist,
 
 		snprintf(buff, sizeof(buff), "%s - select, %s - back",
 			in_get_key_name(-1, -PBTN_MOK), in_get_key_name(-1, -PBTN_MBACK));
-		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 2 - 2, buff, 0xe78c);
+		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 3 - 2, buff, 0xe78c);
+
 		snprintf(buff, sizeof(buff), g_menu_filter_off ?
 			 "%s - hide unknown files" : "%s - show all files",
 			in_get_key_name(-1, -PBTN_MA3));
+		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 2 - 2, buff, 0xe78c);
+
+		snprintf(buff, sizeof(buff), g_autostateld_opt ?
+			 "%s - autoload save is ON" : "%s - autoload save is OFF",
+			in_get_key_name(-1, -PBTN_MA2));
 		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 1 - 2, buff, 0xe78c);
 	}
 
@@ -1049,19 +1057,19 @@ rescan:
 		inp = in_menu_wait(PBTN_UP|PBTN_DOWN|PBTN_LEFT|PBTN_RIGHT
 			| PBTN_L|PBTN_R|PBTN_MA2|PBTN_MA3|PBTN_MOK|PBTN_MBACK
 			| PBTN_MENU|PBTN_CHAR, &cinp, 33);
-		if (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = n-2; }
-		if (inp & PBTN_DOWN)  { sel++;   if (sel > n-2) sel = 0; }
-		if (inp & PBTN_LEFT)  { sel-=10; if (sel < 0)   sel = 0; }
-		if (inp & PBTN_L)     { sel-=24; if (sel < 0)   sel = 0; }
-		if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-2) sel = n-2; }
-		if (inp & PBTN_R)     { sel+=24; if (sel > n-2) sel = n-2; }
-		if (inp & PBTN_CHAR)  sel = dirent_seek_char(namelist, n, sel, cinp);
 		if (inp & PBTN_MA3)   {
 			g_menu_filter_off = !g_menu_filter_off;
 			snprintf(sel_fname, sizeof(sel_fname), "%s",
 				namelist[sel+1]->d_name);
 			goto rescan;
 		}
+		if (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = n-2; }
+		if (inp & PBTN_DOWN)  { sel++;   if (sel > n-2) sel = 0; }
+		if (inp & PBTN_LEFT)  { sel-=10; if (sel < 0)   sel = 0; }
+		if (inp & PBTN_L)     { sel-=24; if (sel < 0)   sel = 0; }
+		if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-2) sel = n-2; }
+		if (inp & PBTN_R)     { sel+=24; if (sel > n-2) sel = n-2; }
+
 		if ((inp & PBTN_MOK) || (inp & (PBTN_MENU|PBTN_MA2)) == (PBTN_MENU|PBTN_MA2))
 		{
 			again:
@@ -1121,6 +1129,15 @@ rescan:
 				}
 			}
 		}
+		else if (inp & PBTN_MA2) {
+			g_autostateld_opt = !g_autostateld_opt;
+			show_help = 3;
+		}
+		else if (inp & PBTN_CHAR) {
+			// must be last
+			sel = dirent_seek_char(namelist, n, sel, cinp);
+		}
+
 		if (inp & PBTN_MBACK)
 			break;
 

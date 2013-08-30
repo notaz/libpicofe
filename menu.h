@@ -118,6 +118,8 @@ extern void *g_menuscreen_ptr;
 extern int g_menuscreen_w;
 extern int g_menuscreen_h;
 
+extern int g_autostateld_opt;
+
 void menu_init_base(void);
 void menu_update_msg(const char *msg);
 void text_out16(int x, int y, const char *texto, ...);

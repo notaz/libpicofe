@@ -428,6 +428,7 @@ finish:
 int in_menu_wait_any(char *charcode, int timeout_ms)
 {
 	int keys_old = menu_key_state;
+	int ret;
 
 	while (1)
 	{
@@ -443,7 +444,9 @@ int in_menu_wait_any(char *charcode, int timeout_ms)
 		}
 	}
 
-	return menu_key_state;
+	ret = menu_key_state;
+	menu_key_state &= ~PBTN_CHAR;
+	return ret;
 }
 
 /* wait for menu input, do autorepeat */
