@@ -15,10 +15,13 @@
 
 #include "sndout_alsa.h"
 
+#define PFX "sndout_alsa: "
+
 static snd_pcm_t *handle;
 static snd_pcm_uframes_t buffer_size, period_size;
-static unsigned int channels;
 static void *silent_period;
+static unsigned int channels;
+static int failure_counter;
 
 int sndout_alsa_init(void)
 {
@@ -55,15 +58,14 @@ int sndout_alsa_start(int rate_, int stereo)
 	ret |= snd_pcm_hw_params_set_period_size_near(handle, hwparams, &period_size, NULL);
 
 	if (ret != 0) {
-		fprintf(stderr, "sndout_alsa: failed to set hwparams\n");
-		return -1;
+		fprintf(stderr, PFX "failed to set hwparams\n");
+		goto fail;
 	}
 
 	ret = snd_pcm_hw_params(handle, hwparams);
 	if (ret != 0) {
-		fprintf(stderr, "sndout_alsa: failed to apply hwparams: %d\n",
-			ret);
-		return -1;
+		fprintf(stderr, PFX "failed to apply hwparams: %d\n", ret);
+		goto fail;
 	}
 
 	snd_pcm_hw_params_get_buffer_size(hwparams, &buffer_size);
@@ -74,21 +76,34 @@ int sndout_alsa_start(int rate_, int stereo)
 	if (silent_period != NULL)
 		memset(silent_period, 0, period_size * 2 * channels);
 
-	ret  = snd_pcm_prepare(handle);
-	ret |= snd_pcm_start(handle);
-
+	ret = snd_pcm_prepare(handle);
 	if (ret != 0) {
-		fprintf(stderr, "sndout_alsa: failed to start pcm: %d\n",
-			ret);
-		return -1;
+		fprintf(stderr, PFX "snd_pcm_prepare failed: %d\n", ret);
+		goto fail;
 	}
 
+	ret = snd_pcm_start(handle);
+	if (ret != 0) {
+		fprintf(stderr, PFX "snd_pcm_start failed: %d\n", ret);
+		goto fail;
+	}
+
+	failure_counter = 0;
+
 	return 0;
+
+fail:
+	// to flush out redirected logs
+	fflush(stdout);
+	fflush(stderr);
+	return -1;
 }
 
 void sndout_alsa_stop(void)
 {
-	// nothing?
+	int ret = snd_pcm_drop(handle);
+	if (ret != 0)
+		fprintf(stderr, PFX "snd_pcm_drop failed: %d\n", ret);
 }
 
 void sndout_alsa_wait(void)
@@ -121,8 +136,8 @@ int sndout_alsa_write_nb(const void *samples, int len)
 	ret = snd_pcm_writei(handle, samples, len);
 	if (ret < 0) {
 		ret = snd_pcm_recover(handle, ret, 1);
-		if (ret != 0)
-			fprintf(stderr, "sndout_alsa snd_pcm_recover: %d\n", ret);
+		if (ret != 0 && failure_counter++ < 5)
+			fprintf(stderr, PFX "snd_pcm_recover: %d\n", ret);
 
 		if (silent_period)
 			snd_pcm_writei(handle, silent_period, period_size);
