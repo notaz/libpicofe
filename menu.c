@@ -959,9 +959,11 @@ static int dirent_seek_char(struct dirent **namelist, int len, int sel, char c)
 	int i;
 
 	sel++;
-	for (i = sel + 1; i != sel; i++) {
+	for (i = sel + 1; ; i++) {
 		if (i >= len)
 			i = 1;
+		if (i == sel)
+			break;
 
 		if (tolower_simple(namelist[i]->d_name[0]) == c)
 			break;
