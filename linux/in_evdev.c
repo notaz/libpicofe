@@ -551,8 +551,8 @@ static const struct {
 	/* "normal" keyboards */
 	{ KEY_ENTER,	PBTN_MOK },
 	{ KEY_ESC,	PBTN_MBACK },
-	{ KEY_A,	PBTN_MA2 },
-	{ KEY_S,	PBTN_MA3 },
+	{ KEY_SEMICOLON,  PBTN_MA2 },
+	{ KEY_APOSTROPHE, PBTN_MA3 },
 	{ KEY_BACKSLASH,  PBTN_MENU },
 	{ KEY_LEFTBRACE,  PBTN_L },
 	{ KEY_RIGHTBRACE, PBTN_R },
