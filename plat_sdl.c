@@ -120,7 +120,7 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   if (plat_target.vout_method == 0) {
     SDL_PumpEvents();
 
-    plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_SWSURFACE);
+    plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       return -1;
@@ -227,7 +227,7 @@ int plat_sdl_init(void)
 
   // overlay/gl require native bpp in some cases..
   plat_sdl_screen = SDL_SetVideoMode(g_menuscreen_w, g_menuscreen_h,
-    0, SDL_SWSURFACE);
+    0, plat_sdl_screen->flags);
   if (plat_sdl_screen == NULL) {
     fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
     goto fail;
