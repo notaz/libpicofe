@@ -16,6 +16,7 @@ struct plat_target {
 	int (*lcdrate_set)(int is_pal);
 	int (*gamma_set)(int val, int black_level);
 	int (*step_volume)(int *volume, int diff);
+	int (*switch_layer)(int which, int enable);
 	const char **vout_methods;
 	int vout_method;
 	int vout_fullscreen;
@@ -80,6 +81,14 @@ static __inline int plat_target_step_volume(int *volume, int diff)
 {
 	if (plat_target.step_volume)
 		return plat_target.step_volume(volume, diff);
+	return -1;
+}
+
+/* switch device graphics layers/overlays */
+static __inline int plat_target_switch_layer(int which, int enable)
+{
+	if (plat_target.switch_layer)
+		return plat_target.switch_layer(which, enable);
 	return -1;
 }
 

@@ -204,6 +204,41 @@ static int gamma_set(int val, int black_level)
 	return do_system(buf);
 }
 
+/* For now, this only switches tv-out to appropriate fb.
+ * Maybe this could control actual layers too? */
+static int switch_layer(int which, int enable)
+{
+	static int was_ovl_enabled = -1;
+	int tv_enabled = 0;
+	char buf[128];
+	int ret;
+
+	if (which != 1)
+		return -1;
+	if (enable == was_ovl_enabled)
+		return 0;
+
+	was_ovl_enabled = -1;
+
+	tv_enabled = read_int_from_file(
+		   "/sys/devices/platform/omapdss/display1/enabled");
+	if (tv_enabled < 0)
+		return -1;
+
+	if (!tv_enabled) {
+		// tv-out not enabled
+		return 0;
+	}
+
+	snprintf(buf, sizeof(buf), "%s/op_tvout.sh -l %d",
+		 pnd_script_base, enable);
+	ret = do_system(buf);
+	if (ret == 0)
+		was_ovl_enabled = enable;
+
+	return ret;
+}
+
 struct plat_target plat_target = {
 	cpu_clock_get,
 	cpu_clock_set,
@@ -211,6 +246,7 @@ struct plat_target plat_target = {
 	hwfilter_set,
 	lcdrate_set,
 	gamma_set,
+	.switch_layer = switch_layer,
 };
 
 int plat_target_init(void)
