@@ -63,7 +63,7 @@ static int *in_alloc_binds(int drv_id, int key_count)
 			if (defbinds[i].bit == 0 && defbinds[i].btype == 0
 			    && defbinds[i].bit == 0)
 				break;
-			binds[IN_BIND_OFFS(defbinds[i].code, defbinds[i].btype)] =
+			binds[IN_BIND_OFFS(defbinds[i].code, defbinds[i].btype)] |=
 				1 << defbinds[i].bit;
 		}
 
