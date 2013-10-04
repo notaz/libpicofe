@@ -29,10 +29,12 @@
 
 #include "soc.h"
 #include "plat_gp2x.h"
+#include "pollux_set.h"
 #include "../plat.h"
 
 static int battdev = -1, mixerdev = -1;
 static int cpu_clock_allowed;
+static unsigned short saved_memtimex[2];
 static unsigned int saved_video_regs[2][6];
 static unsigned int timer_drift; // count per real second
 
@@ -57,6 +59,26 @@ static int decode_pll(unsigned int reg)
 	v = 27000000; // master clock
 	v = v * m / (p << s);
 	return v;
+}
+
+/* RAM timings */
+static void set_ram_timings(void)
+{
+	pollux_set_fromenv(memregs, "POLLUX_RAM_TIMINGS");
+}
+
+static void unset_ram_timings(void)
+{
+	int i;
+
+	memregs[0x14802>>1] = saved_memtimex[0];
+	memregs[0x14804>>1] = saved_memtimex[1] | 0x8000;
+
+	for (i = 0; i < 0x100000; i++)
+		if (!(memregs[0x14804>>1] & 0x8000))
+			break;
+
+	printf("RAM timings reset to startup values.\n");
 }
 
 #define TIMER_BASE3 0x1980
@@ -235,6 +257,11 @@ void pollux_init(void)
 	}
 	memregl = (volatile void *)memregs;
 
+	saved_memtimex[0] = memregs[0x14802>>1];
+	saved_memtimex[1] = memregs[0x14804>>1];
+
+	set_ram_timings();
+
 	// save video regs of both MLCs
 	save_multiple_regs(saved_video_regs[0], 0x4058, ARRAY_SIZE(saved_video_regs[0]));
 	save_multiple_regs(saved_video_regs[1], 0x4458, ARRAY_SIZE(saved_video_regs[1]));
@@ -304,6 +331,8 @@ void pollux_init(void)
 void pollux_finish(void)
 {
 	timer_cleanup();
+
+	unset_ram_timings();
 
 	restore_multiple_regs(0x4058, saved_video_regs[0],
 		ARRAY_SIZE(saved_video_regs[0]));

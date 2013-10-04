@@ -337,6 +337,21 @@ again:
 	return 0;
 }
 
+int pollux_set_fromenv(volatile unsigned short *memregs,
+	const char *env_var)
+{
+	const char *set_string;
+	int ret = -1;
+
+	set_string = getenv(env_var);
+	if (set_string)
+		ret = pollux_set(memregs, set_string);
+	else
+		printf("env var %s not defined.\n", env_var);
+
+	return ret;
+}
+
 #ifdef BINARY
 #include <sys/types.h>
 #include <sys/stat.h>
