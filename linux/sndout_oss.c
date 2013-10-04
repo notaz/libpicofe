@@ -21,6 +21,7 @@
 #include "sndout_oss.h"
 
 int sndout_oss_frag_frames = 1;
+int sndout_oss_can_restart = 1;
 
 static int sounddev = -1, mixerdev = -1;
 static int can_write_safe;
@@ -41,15 +42,17 @@ int sndout_oss_init(void)
 
 void sndout_oss_stop(void)
 {
-#ifdef __GP2X__
-	/* restarting audio on GP2X causes trouble */
-	return;
-#endif
+	/* restarting audio on GP2X causes trouble,
+	 * not restarting on Caanoo causes trouble */
+	if (!sndout_oss_can_restart)
+		return;
 
 	if (sounddev < 0)
 		return;
 
-	ioctl(sounddev, SOUND_PCM_SYNC, 0);
+	// sync causes trouble on Caanoo..
+	//ioctl(sounddev, SOUND_PCM_SYNC, 0);
+
 	close(sounddev);
 	sounddev = -1;
 }

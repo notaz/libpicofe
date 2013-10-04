@@ -10,3 +10,4 @@ void sndout_oss_exit(void);
 
 /* make oss fragment size to fit this much video frames */
 extern int sndout_oss_frag_frames;
+extern int sndout_oss_can_restart;

@@ -24,6 +24,7 @@
 #include "soc.h"
 #include "soc_mmsp2.h"
 #include "plat_gp2x.h"
+#include "../linux/sndout_oss.h"
 #include "../plat.h"
 
 static int mixerdev = -1;
@@ -429,6 +430,8 @@ void mmsp2_init(void)
 
 	gp2x_get_ticks_ms = plat_get_ticks_ms_good;
 	gp2x_get_ticks_us = plat_get_ticks_us_good;
+
+	sndout_oss_can_restart = 0;
 }
 
 void mmsp2_finish(void)

@@ -86,7 +86,8 @@ static void unset_ram_timings(void)
 
 static unsigned int gp2x_get_ticks_us_(void)
 {
-	TIMER_REG(0x08) = 0x4b;  /* run timer, latch value */
+	unsigned int div = TIMER_REG(0x08) & 3;
+	TIMER_REG(0x08) = 0x48 | div;  /* run timer, latch value */
 	return TIMER_REG(0);
 }
 
@@ -302,6 +303,9 @@ void pollux_init(void)
 		TIMER_REG(0x44) = ((timer_div - 1) << 4) | 2;	/* using PLL1 */
 		TIMER_REG(0x40) = 0x0c;				/* clocks on */
 		TIMER_REG(0x08) = 0x68 | timer_div2;		/* run timer, clear irq, latch value */
+
+		gp2x_get_ticks_ms = gp2x_get_ticks_ms_;
+		gp2x_get_ticks_us = gp2x_get_ticks_us_;
 	}
 	else {
 		fprintf(stderr, "warning: could not make use of timer\n");
@@ -323,9 +327,6 @@ void pollux_init(void)
 	plat_target.cpu_clock_set = pollux_cpu_clock_set;
 	plat_target.bat_capacity_get = pollux_bat_capacity_get;
 	plat_target.step_volume = step_volume;
-
-	gp2x_get_ticks_ms = gp2x_get_ticks_ms_;
-	gp2x_get_ticks_us = gp2x_get_ticks_us_;
 }
 
 void pollux_finish(void)
