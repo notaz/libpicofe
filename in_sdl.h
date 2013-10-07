@@ -1,4 +1,1 @@
-struct in_default_bind;
-
-void in_sdl_init(const struct in_default_bind *defbinds,
-		 void (*handler)(void *event));
+int in_sdl_init(const struct in_pdata *pdata, void (*handler)(void *event));

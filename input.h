@@ -76,9 +76,11 @@ enum {
 #define IN_BIND_OFFS(key, btype) \
 	((key) * IN_BINDTYPE_COUNT + (btype))
 
-typedef struct {
+typedef struct InputDriver in_drv_t;
+
+struct InputDriver {
 	const char *prefix;
-	void (*probe)(void);
+	void (*probe)(const in_drv_t *drv);
 	void (*free)(void *drv_data);
 	const char * const *
 	     (*get_key_names)(int *count);
@@ -94,7 +96,8 @@ typedef struct {
 	const char * (*get_key_name)(int keycode);
 
 	const struct in_default_bind *defbinds;
-} in_drv_t;
+	const void *pdata;
+};
 
 struct in_default_bind {
 	unsigned short code;
@@ -102,8 +105,22 @@ struct in_default_bind {
 	unsigned char bit;
 };
 
+struct menu_keymap {
+	short key;
+	short pbtn;
+};
+
+struct in_pdata {
+	const struct in_default_bind *defbinds;
+	const struct menu_keymap *key_map;
+	size_t kmap_size;
+	const struct menu_keymap *joy_map;
+	size_t jmap_size;
+};
+
 /* to be called by drivers */
-int  in_register_driver(const in_drv_t *drv, const struct in_default_bind *defbinds);
+int  in_register_driver(const in_drv_t *drv,
+			const struct in_default_bind *defbinds, const void *pdata);
 void in_register(const char *nname, int drv_fd_hnd, void *drv_data,
 		int key_count, const char * const *key_names, int combos);
 void in_combos_find(const int *binds, int last_key, int *combo_keys, int *combo_acts);

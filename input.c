@@ -247,7 +247,7 @@ void in_probe(void)
 
 	for (i = 0; i < in_driver_count; i++) {
 		in_probe_dev_id = i;
-		in_drivers[i].probe();
+		in_drivers[i].probe(&DRV(i));
 	}
 
 	/* get rid of devs without binds and probes */
@@ -932,7 +932,8 @@ static const char *in_def_get_key_name(int keycode) { return NULL; }
 	if (d.f == NULL) d.f = in_def_##f
 
 /* to be called by drivers */
-int in_register_driver(const in_drv_t *drv, const struct in_default_bind *defbinds)
+int in_register_driver(const in_drv_t *drv,
+			const struct in_default_bind *defbinds, const void *pdata)
 {
 	int count_new = in_driver_count + 1;
 	in_drv_t *new_drivers;
@@ -954,7 +955,9 @@ int in_register_driver(const in_drv_t *drv, const struct in_default_bind *defbin
 	CHECK_ADD_STUB(new_drivers[in_driver_count], menu_translate);
 	CHECK_ADD_STUB(new_drivers[in_driver_count], get_key_code);
 	CHECK_ADD_STUB(new_drivers[in_driver_count], get_key_name);
-	if (defbinds != NULL)
+	if (pdata)
+		new_drivers[in_driver_count].pdata = pdata;
+	if (defbinds)
 		new_drivers[in_driver_count].defbinds = defbinds;
 	in_drivers = new_drivers;
 	in_driver_count = count_new;
