@@ -41,6 +41,8 @@ typedef struct {
 	int abs_mult[MAX_ABS_DEVS]; /* 16.16 multiplier to IN_ABS_RANGE */
 	int abs_adj[MAX_ABS_DEVS];  /* adjust for centering */
 	unsigned int abs_to_digital:1;
+
+	const in_drv_t *drv;
 } in_evdev_t;
 
 #ifndef KEY_CNT
@@ -147,7 +149,7 @@ static const char * const in_evdev_keys[KEY_CNT] = {
 };
 
 
-static void in_evdev_probe(void)
+static void in_evdev_probe(const in_drv_t *drv)
 {
 	long keybits[KEY_CNT / sizeof(long) / 8];
 	long absbits[(ABS_MAX+1) / sizeof(long) / 8];
@@ -205,6 +207,8 @@ static void in_evdev_probe(void)
 		dev = calloc(1, sizeof(*dev));
 		if (dev == NULL)
 			goto skip;
+
+		dev->drv = drv;
 
 		ret = ioctl(fd, EVIOCGKEY(sizeof(keybits)), keybits);
 		if (ret == -1) {
@@ -286,9 +290,13 @@ static void in_evdev_free(void *drv_data)
 }
 
 static const char * const *
-in_evdev_get_key_names(int *count)
+in_evdev_get_key_names(const in_drv_t *drv, int *count)
 {
+	const struct in_pdata *pdata = drv->pdata;
 	*count = KEY_CNT;
+
+	if (pdata->key_names)
+		return pdata->key_names;
 	return in_evdev_keys;
 }
 
@@ -522,47 +530,10 @@ out:
 	return ret_kc;
 }
 
-static const struct {
-	short key;
-	short pbtn;
-} key_pbtn_map[] =
-{
-	{ KEY_UP,	PBTN_UP },
-	{ KEY_DOWN,	PBTN_DOWN },
-	{ KEY_LEFT,	PBTN_LEFT },
-	{ KEY_RIGHT,	PBTN_RIGHT },
-	/* XXX: maybe better set this from it's plat code somehow */
-	/* Pandora */
-	{ KEY_END,	PBTN_MOK },
-	{ KEY_PAGEDOWN,	PBTN_MBACK },
-	{ KEY_HOME,	PBTN_MA2 },
-	{ KEY_PAGEUP,	PBTN_MA3 },
-	{ KEY_LEFTCTRL,   PBTN_MENU },
-	{ KEY_RIGHTSHIFT, PBTN_L },
-	{ KEY_RIGHTCTRL,  PBTN_R },
-	/* Caanoo */
-	{ BTN_THUMB2,	PBTN_MOK },
-	{ BTN_THUMB,	PBTN_MBACK },
-	{ BTN_TRIGGER,	PBTN_MA2 },
-	{ BTN_TOP,	PBTN_MA3 },
-	{ BTN_BASE,	PBTN_MENU },
-	{ BTN_TOP2,	PBTN_L },
-	{ BTN_PINKIE,	PBTN_R },
-	/* "normal" keyboards */
-	{ KEY_ENTER,	PBTN_MOK },
-	{ KEY_ESC,	PBTN_MBACK },
-	{ KEY_SEMICOLON,  PBTN_MA2 },
-	{ KEY_APOSTROPHE, PBTN_MA3 },
-	{ KEY_BACKSLASH,  PBTN_MENU },
-	{ KEY_LEFTBRACE,  PBTN_L },
-	{ KEY_RIGHTBRACE, PBTN_R },
-};
-
-#define KEY_PBTN_MAP_SIZE (sizeof(key_pbtn_map) / sizeof(key_pbtn_map[0]))
-
 static int in_evdev_menu_translate(void *drv_data, int keycode, char *charcode)
 {
 	in_evdev_t *dev = drv_data;
+	const struct in_pdata *pdata = dev->drv->pdata;
 	int ret = 0;
 	int i;
 
@@ -570,9 +541,9 @@ static int in_evdev_menu_translate(void *drv_data, int keycode, char *charcode)
 	{
 		/* menu -> kc */
 		keycode = -keycode;
-		for (i = 0; i < KEY_PBTN_MAP_SIZE; i++)
-			if (key_pbtn_map[i].pbtn == keycode) {
-				int k = key_pbtn_map[i].key;
+		for (i = 0; i < pdata->kmap_size; i++)
+			if (pdata->key_map[i].pbtn == keycode) {
+				int k = pdata->key_map[i].key;
 				/* should really check EVIOCGBIT, but this is enough for now */
 				if (dev->kc_first <= k && k <= dev->kc_last)
 					return k;
@@ -580,9 +551,9 @@ static int in_evdev_menu_translate(void *drv_data, int keycode, char *charcode)
 	}
 	else
 	{
-		for (i = 0; i < KEY_PBTN_MAP_SIZE; i++) {
-			if (key_pbtn_map[i].key == keycode) {
-				ret = key_pbtn_map[i].pbtn;
+		for (i = 0; i < pdata->kmap_size; i++) {
+			if (pdata->key_map[i].key == keycode) {
+				ret = pdata->key_map[i].pbtn;
 				break;
 			}
 		}
@@ -649,8 +620,14 @@ static const in_drv_t in_evdev_drv = {
 	.menu_translate = in_evdev_menu_translate,
 };
 
-void in_evdev_init(const struct in_default_bind *defbinds)
+int in_evdev_init(const struct in_pdata *pdata)
 {
-	in_register_driver(&in_evdev_drv, defbinds);
+	if (!pdata) {
+		fprintf(stderr, "in_sdl: Missing input platform data\n");
+		return -1;
+	}
+
+	in_register_driver(&in_evdev_drv, pdata->defbinds, pdata);
+	return 0;
 }
 
