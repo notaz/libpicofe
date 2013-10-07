@@ -239,7 +239,7 @@ static char tolower_simple(char c)
 
 void menu_init_base(void)
 {
-	int i, c, l;
+	int i, c, l, pos;
 	unsigned char *fd, *fds;
 	char buff[256];
 	FILE *f;
@@ -294,17 +294,18 @@ void menu_init_base(void)
 	}
 
 	// load custom font and selector (stored as 1st symbol in font table)
-	emu_make_path(buff, "skin/font.png", sizeof(buff));
+	pos = plat_get_skin_dir(buff, sizeof(buff));
+	strcpy(buff + pos, "font.png");
 	readpng(menu_font_data, buff, READPNG_FONT,
 		MENU_X2 ? 256 : 128, MENU_X2 ? 320 : 160);
 	// default selector symbol is '>'
 	memcpy(menu_font_data, menu_font_data + ((int)'>') * me_mfont_w * me_mfont_h / 2,
 		me_mfont_w * me_mfont_h / 2);
-	emu_make_path(buff, "skin/selector.png", sizeof(buff));
+	strcpy(buff + pos, "selector.png");
 	readpng(menu_font_data, buff, READPNG_SELECTOR, me_mfont_w, me_mfont_h);
 
 	// load custom colors
-	emu_make_path(buff, "skin/skin.txt", sizeof(buff));
+	strcpy(buff + pos, "skin.txt");
 	f = fopen(buff, "r");
 	if (f != NULL)
 	{
