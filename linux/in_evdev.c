@@ -290,9 +290,13 @@ static void in_evdev_free(void *drv_data)
 }
 
 static const char * const *
-in_evdev_get_key_names(int *count)
+in_evdev_get_key_names(const in_drv_t *drv, int *count)
 {
+	const struct in_pdata *pdata = drv->pdata;
 	*count = KEY_CNT;
+
+	if (pdata->key_names)
+		return pdata->key_names;
 	return in_evdev_keys;
 }
 

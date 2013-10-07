@@ -165,10 +165,15 @@ static const char * const in_sdl_keys[SDLK_LAST] = {
 
 static void in_sdl_probe(const in_drv_t *drv)
 {
+	const struct in_pdata *pdata = drv->pdata;
+	const char * const * key_names = in_sdl_keys;
 	struct in_sdl_state *state;
 	SDL_Joystick *joy;
 	int i, joycount;
 	char name[256];
+
+	if (pdata->key_names)
+		key_names = pdata->key_names;
 
 	state = calloc(1, sizeof(*state));
 	if (state == NULL) {
@@ -178,7 +183,7 @@ static void in_sdl_probe(const in_drv_t *drv)
 
 	state->drv = drv;
 	in_register(IN_SDL_PREFIX "keys", -1, state, SDLK_LAST,
-		in_sdl_keys, 0);
+		key_names, 0);
 
 	/* joysticks go here too */
 	SDL_InitSubSystem(SDL_INIT_JOYSTICK);
@@ -199,7 +204,7 @@ static void in_sdl_probe(const in_drv_t *drv)
 		state->drv = drv;
 
 		snprintf(name, sizeof(name), IN_SDL_PREFIX "%s", SDL_JoystickName(i));
-		in_register(name, -1, state, SDLK_LAST, in_sdl_keys, 0);
+		in_register(name, -1, state, SDLK_LAST, key_names, 0);
 	}
 
 	if (joycount > 0)
@@ -218,9 +223,13 @@ static void in_sdl_free(void *drv_data)
 }
 
 static const char * const *
-in_sdl_get_key_names(int *count)
+in_sdl_get_key_names(const in_drv_t *drv, int *count)
 {
+	const struct in_pdata *pdata = drv->pdata;
 	*count = SDLK_LAST;
+
+	if (pdata->key_names)
+		return pdata->key_names;
 	return in_sdl_keys;
 }
 
@@ -413,10 +422,14 @@ static int in_sdl_menu_translate(void *drv_data, int keycode, char *charcode)
 {
 	struct in_sdl_state *state = drv_data;
 	const struct in_pdata *pdata = state->drv->pdata;
+	const char * const * key_names = in_sdl_keys;
 	const struct menu_keymap *map;
 	int map_len;
 	int ret = 0;
 	int i;
+
+	if (pdata->key_names)
+		key_names = pdata->key_names;
 
 	if (state->joy) {
 		map = pdata->joy_map;
@@ -444,10 +457,10 @@ static int in_sdl_menu_translate(void *drv_data, int keycode, char *charcode)
 		}
 
 		if (charcode != NULL && (unsigned int)keycode < SDLK_LAST &&
-		    in_sdl_keys[keycode] != NULL && in_sdl_keys[keycode][1] == 0)
+		    key_names[keycode] != NULL && key_names[keycode][1] == 0)
 		{
 			ret |= PBTN_CHAR;
-			*charcode = in_sdl_keys[keycode][0];
+			*charcode = key_names[keycode][0];
 		}
 	}
 

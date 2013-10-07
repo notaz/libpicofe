@@ -83,7 +83,7 @@ struct InputDriver {
 	void (*probe)(const in_drv_t *drv);
 	void (*free)(void *drv_data);
 	const char * const *
-	     (*get_key_names)(int *count);
+	     (*get_key_names)(const in_drv_t *drv, int *count);
 	int  (*clean_binds)(void *drv_data, int *binds, int *def_finds);
 	int  (*get_config)(void *drv_data, int what, int *val);
 	int  (*set_config)(void *drv_data, int what, int val);
@@ -116,6 +116,7 @@ struct in_pdata {
 	size_t kmap_size;
 	const struct menu_keymap *joy_map;
 	size_t jmap_size;
+	const char * const *key_names;
 };
 
 /* to be called by drivers */

@@ -808,7 +808,8 @@ int in_config_parse_dev(const char *name)
 	if (in_devices[i].name == NULL)
 		return -1;
 
-	in_devices[i].key_names = DRV(drv_id).get_key_names(&in_devices[i].key_count);
+	in_devices[i].key_names = DRV(drv_id).get_key_names(&DRV(drv_id),
+				&in_devices[i].key_count);
 	in_devices[i].drv_id = drv_id;
 
 	if (i + 1 > in_dev_count)
