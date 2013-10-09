@@ -78,17 +78,19 @@ int plat_get_skin_dir(char *dst, int len)
 #endif
 int plat_get_root_dir(char *dst, int len)
 {
-#if defined(__GP2X__) || defined(PANDORA)
-	return plat_get_data_dir(dst, len);
-#else
-	char *home = getenv("HOME");
-	size_t nb = strlen(home);
+#if !defined(__GP2X__) && !defined(PANDORA)
+	const char *home = getenv("HOME");
+	int ret;
 
-	memcpy(dst, home, nb);
-	memcpy(dst + nb, PICO_HOME_DIR, sizeof PICO_HOME_DIR);
-	mkdir(dst, 0755);
-	return nb + sizeof(PICO_HOME_DIR) - 1;
+	if (home != NULL) {
+		ret = snprintf(dst, len, "%s%s", home, PICO_HOME_DIR);
+		if (ret >= len)
+			ret = len - 1;
+		mkdir(dst, 0755);
+		return ret;
+	}
 #endif
+	return plat_get_data_dir(dst, len);
 }
 
 #ifdef __GP2X__
