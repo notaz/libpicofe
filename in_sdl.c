@@ -20,6 +20,7 @@ typedef unsigned long keybits_t;
 #define KEYBITS_WORD_BITS (sizeof(keybits_t) * 8)
 
 struct in_sdl_state {
+	const in_drv_t *drv;
 	SDL_Joystick *joy;
 	int joy_id;
 	int axis_keydown[2];
@@ -162,12 +163,17 @@ static const char * const in_sdl_keys[SDLK_LAST] = {
 	[SDLK_COMPOSE] = "compose",
 };
 
-static void in_sdl_probe(void)
+static void in_sdl_probe(const in_drv_t *drv)
 {
+	const struct in_pdata *pdata = drv->pdata;
+	const char * const * key_names = in_sdl_keys;
 	struct in_sdl_state *state;
 	SDL_Joystick *joy;
 	int i, joycount;
 	char name[256];
+
+	if (pdata->key_names)
+		key_names = pdata->key_names;
 
 	state = calloc(1, sizeof(*state));
 	if (state == NULL) {
@@ -175,8 +181,9 @@ static void in_sdl_probe(void)
 		return;
 	}
 
+	state->drv = drv;
 	in_register(IN_SDL_PREFIX "keys", -1, state, SDLK_LAST,
-		in_sdl_keys, 0);
+		key_names, 0);
 
 	/* joysticks go here too */
 	SDL_InitSubSystem(SDL_INIT_JOYSTICK);
@@ -194,9 +201,10 @@ static void in_sdl_probe(void)
 		}
 		state->joy = joy;
 		state->joy_id = i;
+		state->drv = drv;
 
 		snprintf(name, sizeof(name), IN_SDL_PREFIX "%s", SDL_JoystickName(i));
-		in_register(name, -1, state, SDLK_LAST, in_sdl_keys, 0);
+		in_register(name, -1, state, SDLK_LAST, key_names, 0);
 	}
 
 	if (joycount > 0)
@@ -215,9 +223,13 @@ static void in_sdl_free(void *drv_data)
 }
 
 static const char * const *
-in_sdl_get_key_names(int *count)
+in_sdl_get_key_names(const in_drv_t *drv, int *count)
 {
+	const struct in_pdata *pdata = drv->pdata;
 	*count = SDLK_LAST;
+
+	if (pdata->key_names)
+		return pdata->key_names;
 	return in_sdl_keys;
 }
 
@@ -406,52 +418,26 @@ static int in_sdl_update_keycode(void *drv_data, int *is_down)
 	return ret_kc;
 }
 
-struct menu_keymap {
-	short key;
-	short pbtn;
-};
-
-static const struct menu_keymap key_pbtn_map[] =
-{
-	{ SDLK_UP,	PBTN_UP },
-	{ SDLK_DOWN,	PBTN_DOWN },
-	{ SDLK_LEFT,	PBTN_LEFT },
-	{ SDLK_RIGHT,	PBTN_RIGHT },
-	/* XXX: maybe better set this from it's plat code somehow */
-	{ SDLK_RETURN,	PBTN_MOK },
-	{ SDLK_ESCAPE,	PBTN_MBACK },
-	{ SDLK_SEMICOLON,    PBTN_MA2 },
-	{ SDLK_QUOTE,        PBTN_MA3 },
-	{ SDLK_BACKSLASH,    PBTN_MENU },
-	{ SDLK_LEFTBRACKET,  PBTN_L },
-	{ SDLK_RIGHTBRACKET, PBTN_R },
-};
-#define KEY_PBTN_MAP_SIZE (sizeof(key_pbtn_map) / sizeof(key_pbtn_map[0]))
-
-static const struct menu_keymap joybtn_pbtn_map[] =
-{
-	{ SDLK_UP,	PBTN_UP },
-	{ SDLK_DOWN,	PBTN_DOWN },
-	{ SDLK_LEFT,	PBTN_LEFT },
-	{ SDLK_RIGHT,	PBTN_RIGHT },
-	/* joystick */
-	{ SDLK_WORLD_0,	PBTN_MOK },
-	{ SDLK_WORLD_1,	PBTN_MBACK },
-	{ SDLK_WORLD_2,	PBTN_MA2 },
-	{ SDLK_WORLD_3,	PBTN_MA3 },
-};
-#define JOYBTN_PBTN_MAP_SIZE (sizeof(joybtn_pbtn_map) / sizeof(joybtn_pbtn_map[0]))
-
 static int in_sdl_menu_translate(void *drv_data, int keycode, char *charcode)
 {
 	struct in_sdl_state *state = drv_data;
+	const struct in_pdata *pdata = state->drv->pdata;
+	const char * const * key_names = in_sdl_keys;
 	const struct menu_keymap *map;
 	int map_len;
 	int ret = 0;
 	int i;
 
-	map = state->joy ? joybtn_pbtn_map : key_pbtn_map;
-	map_len = state->joy ? JOYBTN_PBTN_MAP_SIZE : KEY_PBTN_MAP_SIZE;
+	if (pdata->key_names)
+		key_names = pdata->key_names;
+
+	if (state->joy) {
+		map = pdata->joy_map;
+		map_len = pdata->jmap_size;
+	} else {
+		map = pdata->key_map;
+		map_len = pdata->kmap_size;
+	}
 
 	if (keycode < 0)
 	{
@@ -471,10 +457,10 @@ static int in_sdl_menu_translate(void *drv_data, int keycode, char *charcode)
 		}
 
 		if (charcode != NULL && (unsigned int)keycode < SDLK_LAST &&
-		    in_sdl_keys[keycode] != NULL && in_sdl_keys[keycode][1] == 0)
+		    key_names[keycode] != NULL && key_names[keycode][1] == 0)
 		{
 			ret |= PBTN_CHAR;
-			*charcode = in_sdl_keys[keycode][0];
+			*charcode = key_names[keycode][0];
 		}
 	}
 
@@ -491,9 +477,14 @@ static const in_drv_t in_sdl_drv = {
 	.menu_translate = in_sdl_menu_translate,
 };
 
-void in_sdl_init(const struct in_default_bind *defbinds,
-		 void (*handler)(void *event))
+int in_sdl_init(const struct in_pdata *pdata, void (*handler)(void *event))
 {
-	in_register_driver(&in_sdl_drv, defbinds);
+	if (!pdata) {
+		fprintf(stderr, "in_sdl: Missing input platform data\n");
+		return -1;
+	}
+
+	in_register_driver(&in_sdl_drv, pdata->defbinds, pdata);
 	ext_event_handler = handler;
+	return 0;
 }

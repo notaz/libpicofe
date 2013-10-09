@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 #include "../plat.h"
 
@@ -40,24 +41,54 @@ int plat_is_dir(const char *path)
 	return 0;
 }
 
-int plat_get_root_dir(char *dst, int len)
+static int plat_get_data_dir(char *dst, int len)
 {
-	int j, ret;
-
-	ret = readlink("/proc/self/exe", dst, len - 1);
+#ifdef PICO_DATA_DIR
+	memcpy(dst, PICO_DATA_DIR, sizeof PICO_DATA_DIR);
+	return sizeof(PICO_DATA_DIR) - 1;
+#else
+	int j, ret = readlink("/proc/self/exe", dst, len - 1);
 	if (ret < 0) {
 		perror("readlink");
 		ret = 0;
 	}
 	dst[ret] = 0;
 
-	for (j = strlen(dst); j > 0; j--)
+	for (j = ret - 1; j > 0; j--)
 		if (dst[j] == '/') {
 			dst[++j] = 0;
 			break;
 		}
-
 	return j;
+#endif
+}
+
+int plat_get_skin_dir(char *dst, int len)
+{
+	int ret = plat_get_data_dir(dst, len);
+	if (ret < 0)
+		return ret;
+
+	memcpy(dst + ret, "skin/", sizeof "skin/");
+	return ret + sizeof("skin/") - 1;
+}
+
+#ifndef PICO_HOME_DIR
+#define PICO_HOME_DIR "/.picodrive/"
+#endif
+int plat_get_root_dir(char *dst, int len)
+{
+#if defined(__GP2X__) || defined(PANDORA)
+	return plat_get_data_dir(dst, len);
+#else
+	char *home = getenv("HOME");
+	size_t nb = strlen(home);
+
+	memcpy(dst, home, nb);
+	memcpy(dst + nb, PICO_HOME_DIR, sizeof PICO_HOME_DIR);
+	mkdir(dst, 0755);
+	return nb + sizeof(PICO_HOME_DIR) - 1;
+#endif
 }
 
 #ifdef __GP2X__

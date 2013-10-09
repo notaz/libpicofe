@@ -75,7 +75,7 @@ int sndout_sdl_start(int rate, int stereo)
 	desired.callback = callback;
 	desired.userdata = NULL;
 
-	samples = rate * 4 * 16 / 1000;
+	samples = rate >> 6;
 	for (shift = 8; (1 << shift) < samples; shift++)
 		;
 	desired.samples = 1 << shift;
