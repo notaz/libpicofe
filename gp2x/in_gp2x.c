@@ -88,7 +88,7 @@ static int in_gp2x_get_wiz_bits(void)
 	return value;
 }
 
-static void in_gp2x_probe(void)
+static void in_gp2x_probe(const in_drv_t *drv)
 {
 	switch (gp2x_dev_id)
 	{
@@ -121,7 +121,7 @@ static void in_gp2x_free(void *drv_data)
 }
 
 static const char * const *
-in_gp2x_get_key_names(int *count)
+in_gp2x_get_key_names(const in_drv_t *drv, int *count)
 {
 	*count = IN_GP2X_NBUTTONS;
 	return in_gp2x_keys;
@@ -303,6 +303,6 @@ void in_gp2x_init(const struct in_default_bind *defbinds)
 	
 	in_gp2x_combo_keys = in_gp2x_combo_acts = 0;
 
-	in_register_driver(&in_gp2x_drv, defbinds);
+	in_register_driver(&in_gp2x_drv, defbinds, NULL);
 }
 
