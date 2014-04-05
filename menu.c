@@ -33,6 +33,7 @@ void *g_menubg_ptr;
 
 int g_menuscreen_w;
 int g_menuscreen_h;
+int g_menuscreen_pp;
 
 int g_autostateld_opt;
 
@@ -53,11 +54,17 @@ static int g_menu_filter_off;
 static int g_border_style;
 static int border_left, border_right, border_top, border_bottom;
 
+void menuscreen_memset_lines(unsigned short *dst, int c, int l)
+{
+	for (; l > 0; l--, dst += g_menuscreen_pp)
+		memset(dst, c, g_menuscreen_w * 2);
+}
+
 // draws text to current bbp16 screen
 static void text_out16_(int x, int y, const char *text, int color)
 {
 	int i, lh, tr, tg, tb, len;
-	unsigned short *dest = (unsigned short *)g_menuscreen_ptr + x + y * g_menuscreen_w;
+	unsigned short *dest = (unsigned short *)g_menuscreen_ptr + x + y * g_menuscreen_pp;
 	tr = (color & 0xf800) >> 8;
 	tg = (color & 0x07e0) >> 3;
 	tb = (color & 0x001f) << 3;
@@ -86,7 +93,7 @@ static void text_out16_(int x, int y, const char *text, int color)
 		unsigned short *dst = dest;
 		int u, l;
 
-		for (l = 0; l < lh; l++, dst += g_menuscreen_w - me_mfont_w)
+		for (l = 0; l < lh; l++, dst += g_menuscreen_pp - me_mfont_w)
 		{
 			for (u = me_mfont_w / 2; u > 0; u--, src++)
 			{
@@ -159,7 +166,7 @@ static void smalltext_out16_(int x, int y, const char *texto, int color)
 			break;
 
 		src = fontdata6x8[c];
-		dst = (unsigned short *)g_menuscreen_ptr + x + y * g_menuscreen_w;
+		dst = (unsigned short *)g_menuscreen_ptr + x + y * g_menuscreen_pp;
 
 		while (h--)
 		{
@@ -174,7 +181,7 @@ static void smalltext_out16_(int x, int y, const char *texto, int color)
 						dst += multiplier;
 				}
 
-				dst += g_menuscreen_w - me_sfont_w;
+				dst += g_menuscreen_pp - me_sfont_w;
 			}
 			src++;
 		}
@@ -207,13 +214,13 @@ static void menu_draw_selection(int x, int y, int w)
 	if (menu_sel_color < 0) return; // no selection hilight
 
 	if (y > 0) y--;
-	dest = (unsigned short *)g_menuscreen_ptr + x + y * g_menuscreen_w + me_mfont_w * 2 - 2;
+	dest = (unsigned short *)g_menuscreen_ptr + x + y * g_menuscreen_pp + me_mfont_w * 2 - 2;
 	for (h = me_mfont_h + 1; h > 0; h--)
 	{
 		dst = dest;
 		for (i = w - (me_mfont_w * 2 - 2); i > 0; i--)
 			*dst++ = menu_sel_color;
-		dest += g_menuscreen_w;
+		dest += g_menuscreen_pp;
 	}
 }
 
@@ -381,10 +388,10 @@ static void menu_darken_text_bg(void)
 		ymax = g_menuscreen_h - 1;
 
 	for (x = xmin; x <= xmax; x++)
-		screen[y * g_menuscreen_w + x] = 0xa514;
+		screen[y * g_menuscreen_pp + x] = 0xa514;
 	for (y++; y < ymax; y++)
 	{
-		ls = y * g_menuscreen_w;
+		ls = y * g_menuscreen_pp;
 		screen[ls + xmin] = 0xffff;
 		for (x = xmin + 1; x < xmax; x++)
 		{
@@ -394,7 +401,7 @@ static void menu_darken_text_bg(void)
 		}
 		screen[ls + xmax] = 0xffff;
 	}
-	ls = y * g_menuscreen_w;
+	ls = y * g_menuscreen_pp;
 	for (x = xmin; x <= xmax; x++)
 		screen[ls + x] = 0xffff;
 }
@@ -411,6 +418,8 @@ static void menu_reset_borders(void)
 
 static void menu_draw_begin(int need_bg, int no_borders)
 {
+	int y;
+
 	plat_video_menu_begin();
 
 	menu_reset_borders();
@@ -418,12 +427,14 @@ static void menu_draw_begin(int need_bg, int no_borders)
 
 	if (need_bg) {
 		if (g_border_style && no_borders) {
-			menu_darken_bg(g_menuscreen_ptr, g_menubg_ptr,
-				g_menuscreen_w * g_menuscreen_h, 1);
+			for (y = 0; y < g_menuscreen_h; y++)
+				menu_darken_bg((short *)g_menuscreen_ptr + g_menuscreen_pp * y,
+					g_menubg_ptr + g_menuscreen_w * y, g_menuscreen_w, 1);
 		}
 		else {
-			memcpy(g_menuscreen_ptr, g_menubg_ptr,
-				g_menuscreen_w * g_menuscreen_h * 2);
+			for (y = 0; y < g_menuscreen_h; y++)
+				memcpy((short *)g_menuscreen_ptr + g_menuscreen_pp * y,
+					g_menubg_ptr + g_menuscreen_w * y, g_menuscreen_w * 2);
 		}
 	}
 }
@@ -871,8 +882,8 @@ static void draw_dirlist(char *curdir, struct dirent **namelist,
 //	if (!rom_loaded)
 //		menu_darken_bg(gp2x_screen, 320*240, 0);
 
-	darken_ptr = (short *)g_menuscreen_ptr + g_menuscreen_w * max_cnt/2 * me_sfont_h;
-	menu_darken_bg(darken_ptr, darken_ptr, g_menuscreen_w * me_sfont_h * 8 / 10, 0);
+	darken_ptr = (short *)g_menuscreen_ptr + g_menuscreen_pp * max_cnt/2 * me_sfont_h;
+	menu_darken_bg(darken_ptr, darken_ptr, g_menuscreen_pp * me_sfont_h * 8 / 10, 0);
 
 	x = 5 + me_mfont_w + 1;
 	if (start - 2 >= 0)
@@ -893,9 +904,9 @@ static void draw_dirlist(char *curdir, struct dirent **namelist,
 
 	if (show_help) {
 		darken_ptr = (short *)g_menuscreen_ptr
-			+ g_menuscreen_w * (g_menuscreen_h - me_sfont_h * 5 / 2);
+			+ g_menuscreen_pp * (g_menuscreen_h - me_sfont_h * 5 / 2);
 		menu_darken_bg(darken_ptr, darken_ptr,
-			g_menuscreen_w * (me_sfont_h * 5 / 2), 1);
+			g_menuscreen_pp * (me_sfont_h * 5 / 2), 1);
 
 		snprintf(buff, sizeof(buff), "%s - select, %s - back",
 			in_get_key_name(-1, -PBTN_MOK), in_get_key_name(-1, -PBTN_MBACK));
