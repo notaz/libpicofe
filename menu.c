@@ -252,7 +252,7 @@ void menu_init_base(void)
 		return;
 
 	// generate default 8x10 font from fontdata8x8
-	for (c = 0, fd = menu_font_data; c < 256; c++)
+	for (c = 0, fd = menu_font_data; c < 128; c++)
 	{
 		for (l = 0; l < 8; l++)
 		{
