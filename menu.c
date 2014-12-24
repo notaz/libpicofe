@@ -940,8 +940,14 @@ static int scandir_filter(const struct dirent *ent)
 	if (ent == NULL || ent->d_name == NULL)
 		return 0;
 
-	if (ent->d_type == DT_DIR)
+	switch (ent->d_type) {
+	case DT_DIR:
 		return 1;
+	case DT_LNK:
+	case DT_UNKNOWN:
+		// could be a dir, deal with it later..
+		return 1;
+	}
 
 	ext = strrchr(ent->d_name, '.');
 	if (ext == NULL)
@@ -978,14 +984,16 @@ static const char *menu_loop_romsel(char *curr_path, int len,
 	int (*extra_filter)(struct dirent **namelist, int count,
 			    const char *basedir))
 {
-	static char rom_fname_reload[256]; // used for return
+	static char rom_fname_reload[256]; // used for scratch and return
 	char sel_fname[256];
 	int (*filter)(const struct dirent *);
 	struct dirent **namelist = NULL;
 	int n = 0, inp = 0, sel = 0, show_help = 0;
 	char *curr_path_restore = NULL;
 	const char *ret = NULL;
+	int changed;
 	char cinp;
+	int r, i;
 
 	filter_exts_internal = filter_exts;
 	sel_fname[0] = 0;
@@ -1032,14 +1040,40 @@ rescan:
 		}
 	}
 
+	// try to resolve DT_UNKNOWN and symlinks
+	changed = 0;
+	for (i = 0; i < n; i++) {
+		struct stat st;
+
+		if (namelist[i]->d_type == DT_REG || namelist[i]->d_type == DT_DIR)
+			continue;
+
+		snprintf(rom_fname_reload, sizeof(rom_fname_reload),
+			"%s/%s", curr_path, namelist[i]->d_name);
+		r = stat(rom_fname_reload, &st);
+		if (r == 0)
+		{
+			if (S_ISREG(st.st_mode)) {
+				namelist[i]->d_type = DT_REG;
+				changed = 1;
+			}
+			else if (S_ISDIR(st.st_mode)) {
+				namelist[i]->d_type = DT_DIR;
+				changed = 1;
+			}
+		}
+	}
+
 	if (!g_menu_filter_off && extra_filter != NULL)
 		n = extra_filter(namelist, n, curr_path);
+
+	if (n > 1 && changed)
+		qsort(namelist, n, sizeof(namelist[0]), scandir_cmp);
 
 	// try to find selected file
 	// note: we don't show '.' so sel is namelist index - 1
 	sel = 0;
 	if (sel_fname[0] != 0) {
-		int i;
 		for (i = 1; i < n; i++) {
 			char *dname = namelist[i]->d_name;
 			if (dname[0] == sel_fname[0] && strcmp(dname, sel_fname) == 0) {
@@ -1075,7 +1109,6 @@ rescan:
 
 		if ((inp & PBTN_MOK) || (inp & (PBTN_MENU|PBTN_MA2)) == (PBTN_MENU|PBTN_MA2))
 		{
-			again:
 			if (namelist[sel+1]->d_type == DT_REG)
 			{
 				snprintf(rom_fname_reload, sizeof(rom_fname_reload),
@@ -1114,22 +1147,6 @@ rescan:
 				ret = menu_loop_romsel(newdir, newlen, filter_exts, extra_filter);
 				free(newdir);
 				break;
-			}
-			else
-			{
-				// unknown file type, happens on NTFS mounts. Try to guess.
-				FILE *tstf; int tmp;
-				snprintf(rom_fname_reload, sizeof(rom_fname_reload),
-					"%s/%s", curr_path, namelist[sel+1]->d_name);
-				tstf = fopen(rom_fname_reload, "rb");
-				if (tstf != NULL)
-				{
-					if (fread(&tmp, 1, 1, tstf) > 0 || ferror(tstf) == 0)
-						namelist[sel+1]->d_type = DT_REG;
-					else	namelist[sel+1]->d_type = DT_DIR;
-					fclose(tstf);
-					goto again;
-				}
 			}
 		}
 		else if (inp & PBTN_MA2) {
