@@ -1507,6 +1507,10 @@ static void key_config_loop(const me_bind_action *opts, int opt_cnt, int player_
 			in_unbind_all(bind_dev_id, opts[sel].mask << mask_shift, bindtype);
 
 		in_bind_key(bind_dev_id, kc, opts[sel].mask << mask_shift, bindtype, 0);
+
+		// make sure bind change is displayed
+		if (dev_id != -1)
+			dev_id = bind_dev_id;
 	}
 }
 
