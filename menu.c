@@ -1381,7 +1381,8 @@ static void draw_key_config(const me_bind_action *opts, int opt_cnt, int player_
 	y = (g_menuscreen_h - 4 * me_mfont_h) / 2 - (2 + opt_cnt) * me_mfont_h / 2;
 	if (x < me_mfont_w * 2)
 		x = me_mfont_w * 2;
-
+	if (y < 0)
+		y = 0;
 	menu_draw_begin(1, 0);
 	if (player_idx >= 0)
 		text_out16(x, y, "Player %i controls", player_idx + 1);
