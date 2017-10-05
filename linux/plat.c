@@ -216,8 +216,18 @@ void *plat_mremap(void *ptr, size_t oldsize, size_t newsize)
 	void *ret;
 
 	ret = mremap(ptr, oldsize, newsize, MREMAP_MAYMOVE);
-	if (ret == MAP_FAILED)
-		return NULL;
+	if (ret == MAP_FAILED) {
+		fprintf(stderr, "mremap %p %zd %zd: ",
+			ptr, oldsize, newsize);
+		perror(NULL);
+		// might be because huge pages can't be remapped,
+		// just make a new mapping
+		ret = plat_mmap(0, newsize, 0, 0);
+		if (ret == MAP_FAILED)
+			return NULL;
+		memcpy(ret, ptr, oldsize);
+		munmap(ptr, oldsize);
+	}
 	if (ret != ptr)
 		printf("warning: mremap moved: %p -> %p\n", ptr, ret);
 
