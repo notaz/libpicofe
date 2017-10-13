@@ -937,7 +937,7 @@ static int scandir_filter(const struct dirent *ent)
 	const char *ext;
 	int i;
 
-	if (ent == NULL || ent->d_name == NULL)
+	if (ent == NULL)
 		return 0;
 
 	switch (ent->d_type) {
