@@ -429,12 +429,12 @@ static void menu_draw_begin(int need_bg, int no_borders)
 		if (g_border_style && no_borders) {
 			for (y = 0; y < g_menuscreen_h; y++)
 				menu_darken_bg((short *)g_menuscreen_ptr + g_menuscreen_pp * y,
-					g_menubg_ptr + g_menuscreen_w * y, g_menuscreen_w, 1);
+					(short *)g_menubg_ptr + g_menuscreen_w * y, g_menuscreen_w, 1);
 		}
 		else {
 			for (y = 0; y < g_menuscreen_h; y++)
 				memcpy((short *)g_menuscreen_ptr + g_menuscreen_pp * y,
-					g_menubg_ptr + g_menuscreen_w * y, g_menuscreen_w * 2);
+					(short *)g_menubg_ptr + g_menuscreen_w * y, g_menuscreen_w * 2);
 		}
 	}
 }
