@@ -300,6 +300,34 @@ static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
 		}
 		break;
 
+	case SDL_JOYHATMOTION:
+		if (event->jhat.which != state->joy_id)
+			return -2;
+		if (event->jhat.value == SDL_HAT_CENTERED) {
+			kc = state->axis_keydown[event->jhat.hat];
+			state->axis_keydown[event->jhat.hat] = 0;
+			ret = 1;
+		}
+		else if (event->jhat.value & SDL_HAT_UP || event->jhat.value & SDL_HAT_LEFT) {
+			kc = state->axis_keydown[event->jhat.hat];
+			if (kc)
+				update_keystate(state->keystate, kc, 0);
+			kc = (event->jhat.value & SDL_HAT_UP) ? SDLK_UP : SDLK_LEFT;
+			state->axis_keydown[event->jhat.hat] = kc;
+			down = 1;
+			ret = 1;
+		}
+		else if (event->jhat.value & SDL_HAT_DOWN || event->jhat.value & SDL_HAT_RIGHT) {
+			kc = state->axis_keydown[event->jhat.hat];
+			if (kc)
+				update_keystate(state->keystate, kc, 0);
+			kc = (event->jhat.value & SDL_HAT_DOWN) ? SDLK_DOWN : SDLK_RIGHT;
+			state->axis_keydown[event->jhat.hat] = kc;
+			down = 1;
+			ret = 1;
+		}
+		break;
+
 	case SDL_JOYBUTTONDOWN:
 	case SDL_JOYBUTTONUP:
 		if (event->jbutton.which != state->joy_id)
