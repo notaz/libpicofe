@@ -192,7 +192,10 @@ void sndout_oss_setvol(int l, int r)
 
 void sndout_oss_exit(void)
 {
-	if (sounddev >= 0) close(sounddev); sounddev = -1;
-	if (mixerdev >= 0) close(mixerdev); mixerdev = -1;
+	if (sounddev >= 0)
+		close(sounddev);
+	if (mixerdev >= 0)
+		close(mixerdev);
+	sounddev = mixerdev = -1;
 }
 

@@ -24,6 +24,10 @@
 #include "plat.h"
 #include "posix.h"
 
+#if defined(__GNUC__) && __GNUC__ >= 7
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+#endif
+
 static char static_buff[64];
 static int  menu_error_time = 0;
 char menu_error_msg[64] = { 0, };
@@ -264,14 +268,14 @@ void menu_init_base(void)
 		for (l = 0; l < 8; l++)
 		{
 			unsigned char fd8x8 = fontdata8x8[c*8+l];
-			if (fd8x8&0x80) *fd  = 0xf0;
-			if (fd8x8&0x40) *fd |= 0x0f; fd++;
-			if (fd8x8&0x20) *fd  = 0xf0;
-			if (fd8x8&0x10) *fd |= 0x0f; fd++;
-			if (fd8x8&0x08) *fd  = 0xf0;
-			if (fd8x8&0x04) *fd |= 0x0f; fd++;
-			if (fd8x8&0x02) *fd  = 0xf0;
-			if (fd8x8&0x01) *fd |= 0x0f; fd++;
+			if (fd8x8&0x80) { *fd  = 0xf0; }
+			if (fd8x8&0x40) { *fd |= 0x0f; }; fd++;
+			if (fd8x8&0x20) { *fd  = 0xf0; }
+			if (fd8x8&0x10) { *fd |= 0x0f; }; fd++;
+			if (fd8x8&0x08) { *fd  = 0xf0; }
+			if (fd8x8&0x04) { *fd |= 0x0f; }; fd++;
+			if (fd8x8&0x02) { *fd  = 0xf0; }
+			if (fd8x8&0x01) { *fd |= 0x0f; }; fd++;
 		}
 		fd += 8*2/2; // 2 empty lines
 	}
