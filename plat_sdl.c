@@ -31,7 +31,7 @@ static char vid_drv_name[32];
 static int window_w, window_h;
 static int fs_w, fs_h;
 static int old_fullscreen;
-static int vout_mode_overlay = -1, vout_mode_gl = -1;
+static int vout_mode_overlay = -1, vout_mode_overlay2x = -1, vout_mode_gl = -1;
 static void *display, *window;
 static int gl_quirks;
 
@@ -52,6 +52,7 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   // invalid method might come from config..
   if (plat_target.vout_method != 0
       && plat_target.vout_method != vout_mode_overlay
+      && plat_target.vout_method != vout_mode_overlay2x
       && plat_target.vout_method != vout_mode_gl)
   {
     fprintf(stderr, "invalid vout_method: %d\n", plat_target.vout_method);
@@ -96,8 +97,10 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     }
   }
 
-  if (plat_target.vout_method == vout_mode_overlay) {
-    plat_sdl_overlay = SDL_CreateYUVOverlay(w, h, SDL_UYVY_OVERLAY, plat_sdl_screen);
+  if (plat_target.vout_method == vout_mode_overlay
+      || plat_target.vout_method == vout_mode_overlay2x) {
+    int W = plat_target.vout_method == vout_mode_overlay2x && w == 320 ? 2*w : w;
+    plat_sdl_overlay = SDL_CreateYUVOverlay(W, h, SDL_UYVY_OVERLAY, plat_sdl_screen);
     if (plat_sdl_overlay != NULL) {
       if ((long)plat_sdl_overlay->pixels[0] & 3)
         fprintf(stderr, "warning: overlay pointer is unaligned\n");
@@ -176,7 +179,7 @@ void plat_sdl_event_handler(void *event_)
 
 int plat_sdl_init(void)
 {
-  static const char *vout_list[] = { NULL, NULL, NULL, NULL };
+  static const char *vout_list[] = { NULL, NULL, NULL, NULL, NULL };
   const SDL_VideoInfo *info;
   SDL_SysWMinfo wminfo;
   int overlay_works = 0;
@@ -277,6 +280,10 @@ int plat_sdl_init(void)
   if (overlay_works) {
     plat_target.vout_method = vout_mode_overlay = i;
     vout_list[i++] = "Video Overlay";
+#ifdef SDL_OVERLAY_2X
+    vout_mode_overlay2x = i;
+    vout_list[i++] = "Video Overlay 2x";
+#endif
   }
   if (gl_works) {
     plat_target.vout_method = vout_mode_gl = i;

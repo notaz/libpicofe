@@ -22,11 +22,31 @@ extern char **g_argv;
 
 static struct disassemble_info di;
 
-#ifdef __arm__
+#if defined __arm__
 #define print_insn_func print_insn_little_arm
 #define BFD_ARCH bfd_arch_arm
 #define BFD_MACH bfd_mach_arm_unknown
 #define DASM_OPTS "reg-names-std"
+#elif defined __aarch64__
+#define print_insn_func print_insn_aarch64
+#define BFD_ARCH bfd_arch_aarch64
+#define BFD_MACH bfd_mach_aarch64
+#define DASM_OPTS NULL
+#elif defined __mips__
+#define print_insn_func print_insn_little_mips
+#define BFD_ARCH bfd_arch_mips
+#define BFD_MACH bfd_mach_mipsisa32
+#define DASM_OPTS NULL
+#elif defined __riscv
+#define print_insn_func print_insn_riscv
+#define BFD_ARCH bfd_arch_riscv
+#define BFD_MACH bfd_mach_riscv64
+#define DASM_OPTS NULL
+#elif defined __powerpc__
+#define print_insn_func print_insn_little_powerpc
+#define BFD_ARCH bfd_arch_powerpc
+#define BFD_MACH bfd_mach_ppc64
+#define DASM_OPTS NULL
 #elif defined(__x86_64__) || defined(__i386__)
 #define print_insn_func print_insn_i386_intel
 #define BFD_ARCH bfd_arch_i386
