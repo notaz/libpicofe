@@ -295,6 +295,7 @@ int plat_sdl_init(void)
   }
   plat_target.vout_methods = vout_list;
 
+  plat_sdl_change_video_mode(g_menuscreen_w, g_menuscreen_h, 1);
   return 0;
 
 fail:
