@@ -123,7 +123,11 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   if (plat_target.vout_method == 0) {
     SDL_PumpEvents();
 
+#if defined(SDL_TRIPLEBUF) && defined(SDL_BUFFER_3X)
+    plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_HWSURFACE | SDL_TRIPLEBUF);
+#else
     plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
+#endif
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       return -1;
