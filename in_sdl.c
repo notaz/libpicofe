@@ -25,6 +25,8 @@ struct in_sdl_state {
 	int joy_id;
 	int axis_keydown[2];
 	keybits_t keystate[SDLK_LAST / KEYBITS_WORD_BITS + 1];
+	// emulator keys should always be processed immediately lest one is lost
+	keybits_t emu_keys[SDLK_LAST / KEYBITS_WORD_BITS + 1];
 };
 
 static void (*ext_event_handler)(void *event);
@@ -247,26 +249,41 @@ static void update_keystate(keybits_t *keystate, int sym, int is_down)
 		*ks_word &= ~mask;
 }
 
-static int handle_event(struct in_sdl_state *state, SDL_Event *event,
-	int *kc_out, int *down_out)
+static int get_keystate(keybits_t *keystate, int sym)
 {
+	keybits_t *ks_word, mask;
+
+	mask = 1;
+	mask <<= sym & (KEYBITS_WORD_BITS - 1);
+	ks_word = keystate + sym / KEYBITS_WORD_BITS;
+	return !!(*ks_word & mask);
+}
+
+static int handle_event(struct in_sdl_state *state, SDL_Event *event,
+	int *kc_out, int *down_out, int *emu_out)
+{
+	int emu;
+
 	if (event->type != SDL_KEYDOWN && event->type != SDL_KEYUP)
 		return -1;
 
+	emu = get_keystate(state->emu_keys, event->key.keysym.sym);
 	update_keystate(state->keystate, event->key.keysym.sym,
 		event->type == SDL_KEYDOWN);
 	if (kc_out != NULL)
 		*kc_out = event->key.keysym.sym;
 	if (down_out != NULL)
 		*down_out = event->type == SDL_KEYDOWN;
+	if (emu_out != 0)
+		*emu_out = emu;
 
 	return 1;
 }
 
 static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
-	int *kc_out, int *down_out)
+	int *kc_out, int *down_out, int *emu_out)
 {
-	int kc = -1, down = 0, ret = 0;
+	int kc = -1, down = 0, emu = 0, ret = 0;
 
 	/* TODO: remaining axis */
 	switch (event->type) {
@@ -282,8 +299,10 @@ static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
 		}
 		else if (event->jaxis.value < -16384) {
 			kc = state->axis_keydown[event->jaxis.axis];
-			if (kc)
+			if (kc) {
+				emu |= get_keystate(state->emu_keys, kc);
 				update_keystate(state->keystate, kc, 0);
+			}
 			kc = event->jaxis.axis ? SDLK_UP : SDLK_LEFT;
 			state->axis_keydown[event->jaxis.axis] = kc;
 			down = 1;
@@ -291,8 +310,10 @@ static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
 		}
 		else if (event->jaxis.value > 16384) {
 			kc = state->axis_keydown[event->jaxis.axis];
-			if (kc)
+			if (kc) {
+				emu |= get_keystate(state->emu_keys, kc);
 				update_keystate(state->keystate, kc, 0);
+			}
 			kc = event->jaxis.axis ? SDLK_DOWN : SDLK_RIGHT;
 			state->axis_keydown[event->jaxis.axis] = kc;
 			down = 1;
@@ -312,12 +333,16 @@ static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
 		return -1;
 	}
 
-	if (ret)
+	if (ret) {
+		emu |= get_keystate(state->emu_keys, kc);
 		update_keystate(state->keystate, kc, down);
+	}
 	if (kc_out != NULL)
 		*kc_out = kc;
 	if (down_out != NULL)
 		*down_out = down;
+	if (emu_out != 0)
+		*emu_out = emu;
 
 	return ret;
 }
@@ -329,7 +354,7 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 {
 	SDL_Event events[4];
 	Uint32 mask = state->joy ? JOY_EVENTS : (SDL_ALLEVENTS & ~JOY_EVENTS);
-	int count, maxcount;
+	int count, maxcount, is_emukey;
 	int i, ret, retval = 0;
 	int num_events, num_peeped_events;
 	SDL_Event *event;
@@ -346,12 +371,13 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 			break;
 		for (i = 0; i < count; i++) {
 			event = &events[i];
-			if (state->joy)
+			if (state->joy) {
 				ret = handle_joy_event(state,
-					event, one_kc, one_down);
-			else
+					event, one_kc, one_down, &is_emukey);
+			} else {
 				ret = handle_event(state,
-					event, one_kc, one_down);
+					event, one_kc, one_down, &is_emukey);
+			}
 			if (ret < 0) {
 				switch (ret) {
 					case -2:
@@ -366,11 +392,11 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 			}
 
 			retval |= ret;
-			if (one_kc != NULL && ret)
+			if ((is_emukey || one_kc != NULL) && ret)
 			{
 				// don't lose events other devices might want to handle
-				for (i++; i < count; i++)
-					SDL_PushEvent(&events[i]);
+				if (++i < count)
+					SDL_PeepEvents(events+i, count-i, SDL_ADDEVENT, mask);
 				goto out;
 			}
 		}
@@ -467,6 +493,23 @@ static int in_sdl_menu_translate(void *drv_data, int keycode, char *charcode)
 	return ret;
 }
 
+static int in_sdl_clean_binds(void *drv_data, int *binds, int *def_finds)
+{
+	struct in_sdl_state *state = drv_data;
+	int i, t, cnt = 0;
+
+	memset(state->emu_keys, 0, sizeof(state->emu_keys));
+	for (t = 0; t < IN_BINDTYPE_COUNT; t++)
+		for (i = 0; i < SDLK_LAST; i++)
+			if (binds[IN_BIND_OFFS(i, t)]) {
+				if (t == IN_BINDTYPE_EMU)
+					update_keystate(state->emu_keys, i, 1);
+				cnt ++;
+			}
+
+	return cnt;
+}
+
 static const in_drv_t in_sdl_drv = {
 	.prefix         = IN_SDL_PREFIX,
 	.probe          = in_sdl_probe,
@@ -475,6 +518,7 @@ static const in_drv_t in_sdl_drv = {
 	.update         = in_sdl_update,
 	.update_keycode = in_sdl_update_keycode,
 	.menu_translate = in_sdl_menu_translate,
+	.clean_binds    = in_sdl_clean_binds,
 };
 
 int in_sdl_init(const struct in_pdata *pdata, void (*handler)(void *event))
