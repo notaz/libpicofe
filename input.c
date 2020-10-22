@@ -432,20 +432,12 @@ int in_menu_wait_any(char *charcode, int timeout_ms)
 {
 	int keys_old = menu_key_state;
 	int ret;
+	int is_down = 0, dev_id = 0;
 
-	while (1)
-	{
-		int code, is_down = 0, dev_id = 0;
+	in_update_keycode(&dev_id, &is_down, charcode, timeout_ms);
 
-		code = in_update_keycode(&dev_id, &is_down, charcode, timeout_ms);
-		if (code < 0)
-			break;
-
-		if (keys_old != menu_key_state) {
-			menu_last_used_dev = dev_id;
-			break;
-		}
-	}
+	if (keys_old != menu_key_state)
+		menu_last_used_dev = dev_id;
 
 	ret = menu_key_state;
 	menu_key_state &= ~PBTN_CHAR;
@@ -548,12 +540,12 @@ static int in_set_blocking(int is_blocking)
 		}
 	}
 
-	menu_key_state = 0;
-
 	/* flush events */
 	do {
 		ret = in_update_keycode(NULL, NULL, NULL, 0);
 	} while (ret >= 0);
+
+	menu_key_state = 0;
 
 	return 0;
 }
