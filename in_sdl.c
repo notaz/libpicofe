@@ -381,7 +381,7 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 			if (ret < 0) {
 				switch (ret) {
 					case -2:
-						SDL_PeepEvents(events+i, count-i, SDL_ADDEVENT, mask);
+						SDL_PushEvent(event);
 						break;
 					default:
 						if (ext_event_handler != NULL)
