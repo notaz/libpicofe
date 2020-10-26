@@ -437,13 +437,19 @@ int in_menu_wait_any(char *charcode, int timeout_ms)
 	int ret;
 	int dev_id = 0;
 
+	menu_key_prev = menu_key_state;
+
 	in_update_keycode(&dev_id, NULL, charcode, timeout_ms);
 
 	if (keys_old != menu_key_state)
 		menu_last_used_dev = dev_id;
 
 	ret = menu_key_state;
-	menu_key_state &= ~PBTN_CHAR;
+	if (ret == 0)
+		menu_key_mask = menu_key_prev = 0;
+	else if (ret != menu_key_prev)
+		menu_key_mask = menu_key_prev;
+
 	return ret;
 }
 
@@ -455,23 +461,18 @@ int in_menu_wait(int interesting, char *charcode, int autorep_delay_ms)
 	if (menu_key_repeat)
 		wait = autorep_delay_ms;
 
-	/* wait until either key repeat or a new key has been pressed,
-	 * mask away all old keys if an additional new key is pressed */
+	/* wait until either key repeat or a new key has been pressed */
 	do {
 		ret = in_menu_wait_any(charcode, wait);
-		if (ret == 0) {
-			menu_key_mask = menu_key_prev = 0;
+		if (ret == 0 || ret != menu_key_prev)
 			menu_key_repeat = 0;
-		} else 	if (ret != menu_key_prev) {
-			menu_key_mask = menu_key_prev;
-			menu_key_repeat = 0;
-		} else
+		else
 			menu_key_repeat++;
-		menu_key_prev = ret;
 		wait = -1;
-	} while (!(ret & ~menu_key_mask & interesting));
-
-	ret &= ~menu_key_mask;
+	 	/* mask away all old keys if an additional new key is pressed */
+		/* XXX what if old and new keys share bits (PBTN_CHAR)? */
+		ret &= ~menu_key_mask;
+	} while (!(ret & interesting));
 
 	/* we don't need diagonals in menus */
 	if (ret & (PBTN_UP|PBTN_DOWN))  ret &= ~(PBTN_LEFT|PBTN_RIGHT);
