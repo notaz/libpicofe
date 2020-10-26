@@ -43,6 +43,9 @@ static int in_have_async_devs = 0;
 static int in_probe_dev_id;
 static int menu_key_state = 0;
 static int menu_last_used_dev = 0;
+static int menu_key_prev = 0;
+static int menu_key_mask = 0;
+static int menu_key_repeat = 0;
 
 #define DRV(id) in_drivers[id]
 
@@ -432,47 +435,47 @@ int in_menu_wait_any(char *charcode, int timeout_ms)
 {
 	int keys_old = menu_key_state;
 	int ret;
-	int is_down = 0, dev_id = 0;
+	int dev_id = 0;
 
-	in_update_keycode(&dev_id, &is_down, charcode, timeout_ms);
+	menu_key_prev = menu_key_state;
+
+	in_update_keycode(&dev_id, NULL, charcode, timeout_ms);
 
 	if (keys_old != menu_key_state)
 		menu_last_used_dev = dev_id;
 
 	ret = menu_key_state;
-	menu_key_state &= ~PBTN_CHAR;
+	if (ret == 0)
+		menu_key_mask = menu_key_prev = 0;
+	else if (ret != menu_key_prev)
+		menu_key_mask = menu_key_prev;
+
 	return ret;
 }
 
 /* wait for menu input, do autorepeat */
 int in_menu_wait(int interesting, char *charcode, int autorep_delay_ms)
 {
-	static int inp_prev = 0;
-	static int repeats = 0;
-	int ret, release = 0, wait = 450;
+	int ret, wait = 450;
 
-	if (repeats)
+	if (menu_key_repeat)
 		wait = autorep_delay_ms;
 
-	ret = in_menu_wait_any(charcode, wait);
-	if (ret == inp_prev)
-		repeats++;
-
-	while (!(ret & interesting)) {
-		ret = in_menu_wait_any(charcode, -1);
-		release = 1;
-	}
-
-	if (release || ret != inp_prev)
-		repeats = 0;
-
-	inp_prev = ret;
+	/* wait until either key repeat or a new key has been pressed */
+	do {
+		ret = in_menu_wait_any(charcode, wait);
+		if (ret == 0 || ret != menu_key_prev)
+			menu_key_repeat = 0;
+		else
+			menu_key_repeat++;
+		wait = -1;
+	 	/* mask away all old keys if an additional new key is pressed */
+		/* XXX what if old and new keys share bits (PBTN_CHAR)? */
+		ret &= ~menu_key_mask;
+	} while (!(ret & interesting));
 
 	/* we don't need diagonals in menus */
-	if ((ret & PBTN_UP)   && (ret & PBTN_LEFT))  ret &= ~PBTN_LEFT;
-	if ((ret & PBTN_UP)   && (ret & PBTN_RIGHT)) ret &= ~PBTN_RIGHT;
-	if ((ret & PBTN_DOWN) && (ret & PBTN_LEFT))  ret &= ~PBTN_LEFT;
-	if ((ret & PBTN_DOWN) && (ret & PBTN_RIGHT)) ret &= ~PBTN_RIGHT;
+	if (ret & (PBTN_UP|PBTN_DOWN))  ret &= ~(PBTN_LEFT|PBTN_RIGHT);
 
 	return ret;
 }
