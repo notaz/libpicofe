@@ -107,6 +107,9 @@ int  plat_get_root_dir(char *dst, int len);
 /* return the dir/ where skin files are found */
 int  plat_get_skin_dir(char *dst, int len);
 
+/* return the top level dir for image files */
+int  plat_get_data_dir(char *dst, int len);
+
 int  plat_is_dir(const char *path);
 int  plat_wait_event(int *fds_hnds, int count, int timeout_ms);
 void plat_sleep_ms(int ms);
