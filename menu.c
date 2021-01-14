@@ -31,13 +31,21 @@
 static char static_buff[64];
 static int  menu_error_time = 0;
 char menu_error_msg[64] = { 0, };
+// g_menuscreen is the current output buffer the menu is rendered to.
 void *g_menuscreen_ptr;
-void *g_menubg_src_ptr;
+// g_menubg is the menu background and has the same w/h as g_menuscreen, but
+// pp=w. It is filled on menu entry from file or from g_menubg_src if available.
 void *g_menubg_ptr;
+// g_menubg_src points to a buffer containing a bg image. This is usually either
+// the emulator screen buffer or the host frame buffer.
+void *g_menubg_src_ptr;
 
 int g_menuscreen_w;
 int g_menuscreen_h;
 int g_menuscreen_pp;
+int g_menubg_src_w;
+int g_menubg_src_h;
+int g_menubg_src_pp;
 
 int g_autostateld_opt;
 
