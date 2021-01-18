@@ -41,7 +41,15 @@ int plat_is_dir(const char *path)
 	return 0;
 }
 
-static int plat_get_data_dir(char *dst, int len)
+int plat_get_data_dir(char *dst, int len)
+{
+	if (len > 1)
+		strcpy(dst, "/");
+	else	*dst = 0;
+	return strlen(dst);
+}
+
+static int plat_get_exe_dir(char *dst, int len)
 {
 #ifdef PICO_DATA_DIR
 	memcpy(dst, PICO_DATA_DIR, sizeof PICO_DATA_DIR);
@@ -65,7 +73,7 @@ static int plat_get_data_dir(char *dst, int len)
 
 int plat_get_skin_dir(char *dst, int len)
 {
-	int ret = plat_get_data_dir(dst, len);
+	int ret = plat_get_exe_dir(dst, len);
 	if (ret < 0)
 		return ret;
 
@@ -90,7 +98,7 @@ int plat_get_root_dir(char *dst, int len)
 		return ret;
 	}
 #endif
-	return plat_get_data_dir(dst, len);
+	return plat_get_exe_dir(dst, len);
 }
 
 #ifdef __GP2X__

@@ -112,12 +112,16 @@ typedef struct
 extern me_bind_action me_ctrl_actions[];
 extern me_bind_action emuctrl_actions[];	// platform code
 
-extern void *g_menubg_src_ptr;
-extern void *g_menubg_ptr;
 extern void *g_menuscreen_ptr;
+extern void *g_menubg_ptr;
+extern void *g_menubg_src_ptr;
+
 extern int g_menuscreen_w;
 extern int g_menuscreen_h;
 extern int g_menuscreen_pp; // pitch (in pixels)
+extern int g_menubg_src_w;
+extern int g_menubg_src_h;
+extern int g_menubg_src_pp;
 
 extern int g_autostateld_opt;
 

@@ -31,13 +31,21 @@
 static char static_buff[64];
 static int  menu_error_time = 0;
 char menu_error_msg[64] = { 0, };
+// g_menuscreen is the current output buffer the menu is rendered to.
 void *g_menuscreen_ptr;
-void *g_menubg_src_ptr;
+// g_menubg is the menu background and has the same w/h as g_menuscreen, but
+// pp=w. It is filled on menu entry from file or from g_menubg_src if available.
 void *g_menubg_ptr;
+// g_menubg_src points to a buffer containing a bg image. This is usually either
+// the emulator screen buffer or the host frame buffer.
+void *g_menubg_src_ptr;
 
 int g_menuscreen_w;
 int g_menuscreen_h;
 int g_menuscreen_pp;
+int g_menubg_src_w;
+int g_menubg_src_h;
+int g_menubg_src_pp;
 
 int g_autostateld_opt;
 
@@ -879,7 +887,6 @@ static void draw_dirlist(char *curdir, struct dirent **namelist,
 
 	max_cnt = g_menuscreen_h / me_sfont_h;
 	start = max_cnt / 2 - sel;
-	n--; // exclude current dir (".")
 
 	menu_draw_begin(1, 1);
 
@@ -896,12 +903,12 @@ static void draw_dirlist(char *curdir, struct dirent **namelist,
 		pos = start + i;
 		if (pos < 0)  continue;
 		if (pos >= max_cnt) break;
-		if (namelist[i+1]->d_type == DT_DIR) {
+		if (namelist[i]->d_type == DT_DIR) {
 			smalltext_out16(x, pos * me_sfont_h, "/", 0xfff6);
-			smalltext_out16(x + me_sfont_w, pos * me_sfont_h, namelist[i+1]->d_name, 0xfff6);
+			smalltext_out16(x + me_sfont_w, pos * me_sfont_h, namelist[i]->d_name, 0xfff6);
 		} else {
-			unsigned short color = fname2color(namelist[i+1]->d_name);
-			smalltext_out16(x, pos * me_sfont_h, namelist[i+1]->d_name, color);
+			unsigned short color = fname2color(namelist[i]->d_name);
+			smalltext_out16(x, pos * me_sfont_h, namelist[i]->d_name, color);
 		}
 	}
 	smalltext_out16(5, max_cnt/2 * me_sfont_h, ">", 0xffff);
@@ -934,10 +941,15 @@ static int scandir_cmp(const void *p1, const void *p2)
 {
 	const struct dirent **d1 = (const struct dirent **)p1;
 	const struct dirent **d2 = (const struct dirent **)p2;
+	const char *p;
+	if ((p = (*d1)->d_name)[0] == '.' && p[1] == '.' && p[2] == 0)
+		return -1;	// ".." first
+	if ((p = (*d2)->d_name)[0] == '.' && p[1] == '.' && p[2] == 0)
+		return 1;
 	if ((*d1)->d_type == (*d2)->d_type)
 		return alphasort(d1, d2);
 	if ((*d1)->d_type == DT_DIR)
-		return -1; // put before
+		return -1;	// directories before files/links
 	if ((*d2)->d_type == DT_DIR)
 		return  1;
 
@@ -957,7 +969,8 @@ static int scandir_filter(const struct dirent *ent)
 
 	switch (ent->d_type) {
 	case DT_DIR:
-		return 1;
+		// leave out useless reference to current directory
+		return strcmp(ent->d_name, ".") != 0;
 	case DT_LNK:
 	case DT_UNKNOWN:
 		// could be a dir, deal with it later..
@@ -1006,7 +1019,6 @@ static const char *menu_loop_romsel(char *curr_path, int len,
 	int n = 0, inp = 0, sel = 0, show_help = 0;
 	char *curr_path_restore = NULL;
 	const char *ret = NULL;
-	int changed;
 	char cinp;
 	int r, i;
 
@@ -1040,13 +1052,10 @@ rescan:
 
 	n = scandir(curr_path, &namelist, filter, (void *)scandir_cmp);
 	if (n < 0) {
-		char *t;
 		lprintf("menu_loop_romsel failed, dir: %s\n", curr_path);
 
-		// try root
-		t = getcwd(curr_path, len);
-		if (t == NULL)
-			plat_get_root_dir(curr_path, len);
+		// try data root
+		plat_get_data_dir(curr_path, len);
 		n = scandir(curr_path, &namelist, filter, (void *)scandir_cmp);
 		if (n < 0) {
 			// oops, we failed
@@ -1056,43 +1065,40 @@ rescan:
 	}
 
 	// try to resolve DT_UNKNOWN and symlinks
-	changed = 0;
 	for (i = 0; i < n; i++) {
 		struct stat st;
+		char *slash;
 
 		if (namelist[i]->d_type == DT_REG || namelist[i]->d_type == DT_DIR)
 			continue;
 
+		r = strlen(curr_path);
+		slash = (r && curr_path[r-1] == '/') ? "" : "/";
 		snprintf(rom_fname_reload, sizeof(rom_fname_reload),
-			"%s/%s", curr_path, namelist[i]->d_name);
+			"%s%s%s", curr_path, slash, namelist[i]->d_name);
 		r = stat(rom_fname_reload, &st);
 		if (r == 0)
 		{
-			if (S_ISREG(st.st_mode)) {
+			if (S_ISREG(st.st_mode))
 				namelist[i]->d_type = DT_REG;
-				changed = 1;
-			}
-			else if (S_ISDIR(st.st_mode)) {
+			else if (S_ISDIR(st.st_mode))
 				namelist[i]->d_type = DT_DIR;
-				changed = 1;
-			}
 		}
 	}
 
 	if (!g_menu_filter_off && extra_filter != NULL)
 		n = extra_filter(namelist, n, curr_path);
 
-	if (n > 1 && changed)
+	if (n > 1)
 		qsort(namelist, n, sizeof(namelist[0]), scandir_cmp);
 
 	// try to find selected file
-	// note: we don't show '.' so sel is namelist index - 1
 	sel = 0;
 	if (sel_fname[0] != 0) {
-		for (i = 1; i < n; i++) {
+		for (i = 0; i < n; i++) {
 			char *dname = namelist[i]->d_name;
 			if (dname[0] == sel_fname[0] && strcmp(dname, sel_fname) == 0) {
-				sel = i - 1;
+				sel = i;
 				break;
 			}
 		}
@@ -1112,52 +1118,54 @@ rescan:
 		if (inp & PBTN_MA3)   {
 			g_menu_filter_off = !g_menu_filter_off;
 			snprintf(sel_fname, sizeof(sel_fname), "%s",
-				namelist[sel+1]->d_name);
+				namelist[sel]->d_name);
 			goto rescan;
 		}
-		if (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = n-2; }
-		if (inp & PBTN_DOWN)  { sel++;   if (sel > n-2) sel = 0; }
+		if (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = n-1; }
+		if (inp & PBTN_DOWN)  { sel++;   if (sel > n-1) sel = 0; }
 		if (inp & PBTN_LEFT)  { sel-=10; if (sel < 0)   sel = 0; }
 		if (inp & PBTN_L)     { sel-=24; if (sel < 0)   sel = 0; }
-		if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-2) sel = n-2; }
-		if (inp & PBTN_R)     { sel+=24; if (sel > n-2) sel = n-2; }
+		if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-1) sel = n-1; }
+		if (inp & PBTN_R)     { sel+=24; if (sel > n-1) sel = n-1; }
 
 		if ((inp & PBTN_MOK) || (inp & (PBTN_MENU|PBTN_MA2)) == (PBTN_MENU|PBTN_MA2))
 		{
-			if (namelist[sel+1]->d_type == DT_REG)
+			if (namelist[sel]->d_type == DT_REG)
 			{
+				int l = strlen(curr_path);
+				char *slash = l && curr_path[l-1] == '/' ? "" : "/";
 				snprintf(rom_fname_reload, sizeof(rom_fname_reload),
-					"%s/%s", curr_path, namelist[sel+1]->d_name);
+					"%s%s%s", curr_path, slash, namelist[sel]->d_name);
 				if (inp & PBTN_MOK) { // return sel
 					ret = rom_fname_reload;
 					break;
 				}
-				do_delete(rom_fname_reload, namelist[sel+1]->d_name);
+				do_delete(rom_fname_reload, namelist[sel]->d_name);
 				goto rescan;
 			}
-			else if (namelist[sel+1]->d_type == DT_DIR)
+			else if (namelist[sel]->d_type == DT_DIR)
 			{
 				int newlen;
 				char *p, *newdir;
 				if (!(inp & PBTN_MOK))
 					continue;
-				newlen = strlen(curr_path) + strlen(namelist[sel+1]->d_name) + 2;
+				newlen = strlen(curr_path) + strlen(namelist[sel]->d_name) + 2;
 				newdir = malloc(newlen);
 				if (newdir == NULL)
 					break;
-				if (strcmp(namelist[sel+1]->d_name, "..") == 0) {
+				if (strcmp(namelist[sel]->d_name, "..") == 0) {
 					char *start = curr_path;
 					p = start + strlen(start) - 1;
 					while (*p == '/' && p > start) p--;
 					while (*p != '/' && p > start) p--;
-					if (p <= start) strcpy(newdir, "/");
+					if (p <= start) plat_get_data_dir(newdir, newlen);
 					else { strncpy(newdir, start, p-start); newdir[p-start] = 0; }
 				} else {
 					strcpy(newdir, curr_path);
 					p = newdir + strlen(newdir) - 1;
 					while (*p == '/' && p >= newdir) *p-- = 0;
 					strcat(newdir, "/");
-					strcat(newdir, namelist[sel+1]->d_name);
+					strcat(newdir, namelist[sel]->d_name);
 				}
 				ret = menu_loop_romsel(newdir, newlen, filter_exts, extra_filter);
 				free(newdir);

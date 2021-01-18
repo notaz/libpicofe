@@ -17,6 +17,19 @@
 #define DT_DIR 0
 #endif
 
+#elif defined(__PSP__)
+
+#include <dirent.h>
+#include <unistd.h>
+#include <sys/stat.h>
+
+/* map PSP names to posix. needs special scandir() function to mask rwx bits */
+#define d_type d_stat.st_attr
+#define DT_LNK FIO_SO_IFLNK
+#define DT_DIR FIO_SO_IFDIR
+#define DT_REG FIO_SO_IFREG
+#define DT_UNKNOWN 0
+
 #else
 
 #error "must provide posix"
