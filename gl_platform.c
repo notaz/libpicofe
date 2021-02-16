@@ -1,7 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <EGL/egl.h>
-#include <GLES/gl.h>
+#if defined(__arm__)
+  #include <GLES/gl.h>
+#else
+  #include <GL/gl.h>
+#endif
 
 #include "gl.h"
 #include "gl_platform.h"
