@@ -51,7 +51,7 @@ int sndout_alsa_start(int rate_, int stereo)
 
 	ret  = snd_pcm_hw_params_any(handle, hwparams);
 	ret |= snd_pcm_hw_params_set_access(handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED);
-	ret |= snd_pcm_hw_params_set_format(handle, hwparams, SND_PCM_FORMAT_S16_LE);
+	ret |= snd_pcm_hw_params_set_format(handle, hwparams, SND_PCM_FORMAT_S16);
 	ret |= snd_pcm_hw_params_set_channels(handle, hwparams, stereo ? 2 : 1);
 	ret |= snd_pcm_hw_params_set_rate_near(handle, hwparams, &rate, 0);
 	ret |= snd_pcm_hw_params_set_buffer_size_near(handle, hwparams, &buffer_size);
