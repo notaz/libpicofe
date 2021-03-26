@@ -494,24 +494,12 @@ static int me_count(const menu_entry *ent)
 
 static unsigned int me_read_onoff(const menu_entry *ent)
 {
-	// guess var size based on mask to avoid reading too much
-	if (ent->mask & 0xffff0000)
-		return *(unsigned int *)ent->var & ent->mask;
-	else if (ent->mask & 0xff00)
-		return *(unsigned short *)ent->var & ent->mask;
-	else
-		return *(unsigned char *)ent->var & ent->mask;
+	return *(unsigned int *)ent->var & ent->mask;
 }
 
 static void me_toggle_onoff(menu_entry *ent)
 {
-	// guess var size based on mask to avoid reading too much
-	if (ent->mask & 0xffff0000)
-		*(unsigned int *)ent->var ^= ent->mask;
-	else if (ent->mask & 0xff00)
-		*(unsigned short *)ent->var ^= ent->mask;
-	else
-		*(unsigned char *)ent->var ^= ent->mask;
+	*(unsigned int *)ent->var ^= ent->mask;
 }
 
 static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
@@ -645,7 +633,7 @@ static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
 					offs += (10 - len - 2) * me_mfont_w;
 				if (offs < leftname_end)
 					offs = leftname_end;
-				if (i == *(unsigned char *)ent->var) {
+				if (i == *(int *)ent->var) {
 					text_out16(offs, y, "%s", names[i]);
 					break;
 				}
@@ -710,11 +698,11 @@ static int me_process(menu_entry *entry, int is_next, int is_lr)
 			names = (const char **)entry->data;
 			for (c = 0; names[c] != NULL; c++)
 				;
-			*(signed char *)entry->var += is_next ? 1 : -1;
-			if (*(signed char *)entry->var < 0)
-				*(signed char *)entry->var = 0;
-			if (*(signed char *)entry->var >= c)
-				*(signed char *)entry->var = c - 1;
+			*(int *)entry->var += is_next ? 1 : -1;
+			if (*(int *)entry->var < 0)
+				*(int *)entry->var = 0;
+			if (*(int *)entry->var >= c)
+				*(int *)entry->var = c - 1;
 			return 1;
 		default:
 			return 0;
