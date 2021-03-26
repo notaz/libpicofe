@@ -630,7 +630,7 @@ static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
 				offs = x + col2_offs;
 				len = strlen(names[i]);
 				if (len > 10)
-					offs += (10 - len - 2) * me_mfont_w;
+					offs += (10 - len) * me_mfont_w;
 				if (offs < leftname_end)
 					offs = leftname_end;
 				if (i == *(int *)ent->var) {
