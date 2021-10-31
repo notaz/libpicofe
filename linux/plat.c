@@ -86,7 +86,7 @@ int plat_get_skin_dir(char *dst, int len)
 #endif
 int plat_get_root_dir(char *dst, int len)
 {
-#if !defined(__GP2X__) && !defined(PANDORA)
+#if !defined(NO_HOME_DIR) && !defined(__GP2X__) && !defined(PANDORA)
 	const char *home = getenv("HOME");
 	int ret;
 
