@@ -186,9 +186,11 @@ int plat_sdl_init(void)
   static const char *vout_list[] = { NULL, NULL, NULL, NULL, NULL };
   const SDL_VideoInfo *info;
   SDL_SysWMinfo wminfo;
+  const char *env;
   int overlay_works = 0;
   int gl_works = 0;
   int i, ret, h;
+  int try_gl;
 
   ret = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE);
   if (ret != 0) {
@@ -274,8 +276,22 @@ int plat_sdl_init(void)
   (void)wminfo;
 #endif
 
-  ret = gl_init(display, window, &gl_quirks);
+  ret = -1;
+  try_gl = 1;
+  env = getenv("DISPLAY");
+  if (env && env[0] != ':') {
+    fprintf(stderr, "looks like a remote DISPLAY, "
+      "not trying GL (use PICOFE_GL=1 to override)\n");
+    // because some drivers just kill the program with no way to recover
+    try_gl = 0;
+  }
+  env = getenv("PICOFE_GL");
+  if (env)
+    try_gl = atoi(env);
+  if (try_gl)
+    ret = gl_init(display, window, &gl_quirks);
   if (ret == 0) {
+    gl_announce();
     gl_works = 1;
     gl_finish();
   }

@@ -131,6 +131,11 @@ out:
 	return retval;
 }
 
+void gl_announce(void)
+{
+	printf("GL_RENDERER: %s\n", (char *)glGetString(GL_RENDERER));
+}
+
 static float vertices[] = {
 	-1.0f,  1.0f,  0.0f, // 0    0  1
 	 1.0f,  1.0f,  0.0f, // 1  ^
