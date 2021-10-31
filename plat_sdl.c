@@ -231,6 +231,7 @@ int plat_sdl_init(void)
   }
   g_menuscreen_w = window_w = plat_sdl_screen->w;
   g_menuscreen_h = window_h = plat_sdl_screen->h;
+  g_menuscreen_pp = g_menuscreen_w;
 
   // overlay/gl require native bpp in some cases..
   plat_sdl_screen = SDL_SetVideoMode(g_menuscreen_w, g_menuscreen_h,
