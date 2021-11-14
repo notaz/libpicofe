@@ -18,7 +18,7 @@ static __inline int gl_init(void *display, void *window, int *quirks)
 {
   return -1;
 }
-static void gl_announce(void)
+static __inline void gl_announce(void)
 {
 }
 static __inline int gl_flip(const void *fb, int w, int h)
