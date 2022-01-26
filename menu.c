@@ -1319,9 +1319,9 @@ static char *action_binds(int player_idx, int action_mask, int dev_id)
 	type = IN_BINDTYPE_EMU;
 	if (player_idx >= 0) {
 		can_combo = 0;
-		type = IN_BINDTYPE_PLAYER12;
+		type = IN_BINDTYPE_PLAYER12 + (player_idx >> 1);
 	}
-	if (player_idx == 1)
+	if (player_idx & 1)
 		action_mask <<= 16;
 
 	if (dev_id >= 0)
@@ -1459,9 +1459,11 @@ static void key_config_loop(const me_bind_action *opts, int opt_cnt, int player_
 
 	dev_id = -1; // show all
 	mask_shift = 0;
-	if (player_idx == 1)
+	if (player_idx & 1)
 		mask_shift = 16;
-	bindtype = player_idx >= 0 ? IN_BINDTYPE_PLAYER12 : IN_BINDTYPE_EMU;
+	bindtype = IN_BINDTYPE_EMU;
+	if (player_idx >= 0)
+	       bindtype = IN_BINDTYPE_PLAYER12 + (player_idx >> 1);
 
 	for (;;)
 	{
