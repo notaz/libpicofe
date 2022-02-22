@@ -218,6 +218,8 @@ int plat_sdl_init(void)
     if (g_menuscreen_h > h)
       g_menuscreen_h = h;
   }
+  if (plat_target.vout_fullscreen)
+    g_menuscreen_w = g_menuscreen_h * fs_w / fs_h;
 
   ret = plat_sdl_change_video_mode(g_menuscreen_w, g_menuscreen_h, 1);
   if (ret != 0) {
