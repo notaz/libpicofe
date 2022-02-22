@@ -21,6 +21,7 @@
 extern char **g_argv;
 
 static struct disassemble_info di;
+static disassembler_ftype print_insn_func;
 
 #if defined __arm__
 #define print_insn_func print_insn_little_arm
@@ -35,10 +36,10 @@ static struct disassemble_info di;
 #elif defined __mips__
 #define print_insn_func print_insn_little_mips
 #define BFD_ARCH bfd_arch_mips
-#define BFD_MACH bfd_mach_mipsisa32
+#define BFD_MACH bfd_mach_mipsisa64r2
 #define DASM_OPTS NULL
 #elif defined __riscv
-#define print_insn_func print_insn_riscv
+//#define print_insn_func print_insn_riscv
 #define BFD_ARCH bfd_arch_riscv
 #define BFD_MACH bfd_mach_riscv64
 #define DASM_OPTS NULL
@@ -160,7 +161,7 @@ static int
 dis_asm_read_memory(bfd_vma memaddr, bfd_byte *myaddr, unsigned int len,
                      struct disassemble_info *info)
 {
-  memcpy(myaddr, (void *)(long)memaddr, len);
+  memcpy(myaddr, (void *)memaddr, len);
   return 0;
 }
 
@@ -195,10 +196,20 @@ static int insn_printf(void *f, const char *format, ...)
   return n;
 }
 
+static int print_insn_hex(bfd_vma addr, struct disassemble_info *info)
+{
+  unsigned op;
+
+  dis_asm_read_memory(addr, (bfd_byte *)&op, 4, info);
+  printf("%p %08lx",(void *)addr, (long)op);
+  return 4;
+}
+
 static void host_dasm_init(void)
 {
   bfd_init();
-  slurp_symtab(g_argv[0]);
+  if (g_argv && g_argv[0])
+    slurp_symtab(g_argv[0]);
 
   init_disassemble_info(&di, NULL, insn_printf);
   di.flavour = bfd_target_unknown_flavour;
@@ -211,12 +222,16 @@ static void host_dasm_init(void)
   di.endian = BFD_ENDIAN_LITTLE;
   di.disassembler_options = DASM_OPTS;
   disassemble_init_for_target(&di);
+#ifndef print_insn_func
+  print_insn_func = disassembler(BFD_ARCH, 0, BFD_MACH, NULL);
+  if (!print_insn_func) print_insn_func = print_insn_hex;
+#endif
   init_done = 1;
 }
 
 void host_dasm(void *addr, int len)
 {
-  bfd_vma vma_end, vma = (bfd_vma)(long)addr;
+  bfd_vma vma_end, vma = (bfd_vma)addr;
   const char *name;
 
   if (!init_done)
