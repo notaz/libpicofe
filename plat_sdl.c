@@ -365,10 +365,10 @@ void plat_sdl_overlay_clear(void)
   int *dst = (int *)plat_sdl_overlay->pixels[0];
   int v = 0x10801080;
 
-  for (; pixels > 0; dst += 4, pixels -= 2 * 4)
+  for (; pixels > 7; dst += 4, pixels -= 2 * 4)
     dst[0] = dst[1] = dst[2] = dst[3] = v;
 
-  for (; pixels > 0; dst++, pixels -= 2)
+  for (; pixels > 1; dst++, pixels -= 2)
     *dst = v;
 }
 
