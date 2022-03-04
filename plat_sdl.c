@@ -28,9 +28,10 @@ void (*plat_sdl_resize_cb)(int w, int h);
 void (*plat_sdl_quit_cb)(void);
 
 static char vid_drv_name[32];
-static int window_w, window_h;
+static int window_w, window_h, window_b;
 static int fs_w, fs_h;
 static int old_fullscreen;
+static int screen_flags;
 static int vout_mode_overlay = -1, vout_mode_overlay2x = -1, vout_mode_gl = -1;
 static void *display, *window;
 static int gl_quirks;
@@ -90,7 +91,10 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     // (seen on r-pi)
     SDL_PumpEvents();
 
-    plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 0, flags);
+    if (!plat_sdl_screen || screen_flags != flags ||
+        plat_sdl_screen->w != win_w || plat_sdl_screen->h != win_h)
+      plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 0, flags);
+    screen_flags = flags;
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       plat_target.vout_method = 0;
@@ -99,7 +103,7 @@ int plat_sdl_change_video_mode(int w, int h, int force)
 
   if (plat_target.vout_method == vout_mode_overlay
       || plat_target.vout_method == vout_mode_overlay2x) {
-    int W = plat_target.vout_method == vout_mode_overlay2x && w == 320 ? 2*w : w;
+    int W = plat_target.vout_method == vout_mode_overlay2x && w < 640 ? 2*w : w;
     plat_sdl_overlay = SDL_CreateYUVOverlay(W, h, SDL_UYVY_OVERLAY, plat_sdl_screen);
     if (plat_sdl_overlay != NULL) {
       if ((long)plat_sdl_overlay->pixels[0] & 3)
@@ -140,7 +144,10 @@ int plat_sdl_change_video_mode(int w, int h, int force)
 
     SDL_PumpEvents();
 
-    plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 16, flags);
+    if (!plat_sdl_screen || screen_flags != flags ||
+        plat_sdl_screen->w != win_w || plat_sdl_screen->h != win_h)
+      plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 16, flags);
+    screen_flags = flags;
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       return -1;
@@ -165,8 +172,8 @@ void plat_sdl_event_handler(void *event_)
     if (plat_target.vout_method != 0
         && !plat_target.vout_fullscreen && !old_fullscreen)
     {
-      window_w = event->resize.w;
-      window_h = event->resize.h;
+      window_w = event->resize.w & ~3;
+      window_h = event->resize.h & ~3;
       plat_sdl_change_video_mode(0, 0, 1);
     }
     break;
@@ -215,6 +222,8 @@ int plat_sdl_init(void)
   if (info != NULL) {
     fs_w = info->current_w;
     fs_h = info->current_h;
+    if (info->wm_available)
+      window_b = WM_DECORATION_H;
     printf("plat_sdl: using %dx%d as fullscreen resolution\n", fs_w, fs_h);
   }
 
@@ -224,16 +233,14 @@ int plat_sdl_init(void)
   g_menuscreen_h = 480;
   if (fs_h != 0) {
     h = fs_h;
-    if (info && info->wm_available && h > WM_DECORATION_H)
-      h -= WM_DECORATION_H;
+    if (window_b && h > window_b)
+      h -= window_b;
     if (g_menuscreen_h > h)
       g_menuscreen_h = h;
   }
-  if (plat_target.vout_fullscreen)
-    g_menuscreen_w = g_menuscreen_h * fs_w / fs_h;
 
-  ret = plat_sdl_change_video_mode(g_menuscreen_w, g_menuscreen_h, 1);
-  if (ret != 0) {
+  plat_sdl_screen = SDL_SetVideoMode(g_menuscreen_w, g_menuscreen_h, 16, SDL_HWSURFACE);
+  if (plat_sdl_screen == NULL) {
     plat_sdl_screen = SDL_SetVideoMode(0, 0, 16, SDL_SWSURFACE);
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
