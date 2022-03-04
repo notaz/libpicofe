@@ -121,15 +121,26 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   }
 
   if (plat_target.vout_method == 0) {
-    SDL_PumpEvents();
+    Uint32 flags;
+    int win_w = window_w;
+    int win_h = window_h;
 
 #if defined SDL_SURFACE_SW
-    plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_SWSURFACE);
+    flags = SDL_SWSURFACE;
 #elif defined(SDL_TRIPLEBUF) && defined(SDL_BUFFER_3X)
-    plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_HWSURFACE | SDL_TRIPLEBUF);
+    flags = SDL_HWSURFACE | SDL_TRIPLEBUF;
 #else
-    plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
 #endif
+    if (plat_target.vout_fullscreen && fs_w && fs_h) {
+      flags |= SDL_FULLSCREEN;
+      win_w = fs_w;
+      win_h = fs_h;
+    }
+
+    SDL_PumpEvents();
+
+    plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 16, flags);
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       return -1;
