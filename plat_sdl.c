@@ -126,8 +126,8 @@ int plat_sdl_change_video_mode(int w, int h, int force)
 
   if (plat_target.vout_method == 0) {
     Uint32 flags;
-    int win_w = window_w;
-    int win_h = window_h;
+    int win_w = w;
+    int win_h = h;
 
 #if defined SDL_SURFACE_SW
     flags = SDL_SWSURFACE;
