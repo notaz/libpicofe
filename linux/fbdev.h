@@ -5,7 +5,7 @@ void *vout_fbdev_flip(struct vout_fbdev *fbdev);
 void  vout_fbdev_wait_vsync(struct vout_fbdev *fbdev);
 void *vout_fbdev_resize(struct vout_fbdev *fbdev, int w, int h, int bpp,
 			int left_border, int right_border, int top_border, int bottom_border,
-			int buffer_count);
+			int buffer_cnt, int first_write_to_front);
 void  vout_fbdev_clear(struct vout_fbdev *fbdev);
 void  vout_fbdev_clear_lines(struct vout_fbdev *fbdev, int y, int count);
 int   vout_fbdev_get_fd(struct vout_fbdev *fbdev);
