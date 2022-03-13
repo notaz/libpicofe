@@ -155,7 +155,8 @@ out:
 
 void vout_fbdev_clear(struct vout_fbdev *fbdev)
 {
-	memset(fbdev->mem, 0, fbdev->mem_size);
+	if (fbdev->mem)
+		memset(fbdev->mem, 0, fbdev->fb_size * fbdev->buffer_count);
 }
 
 void vout_fbdev_clear_lines(struct vout_fbdev *fbdev, int y, int count)
