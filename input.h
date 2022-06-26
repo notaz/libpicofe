@@ -66,8 +66,11 @@ enum {
 	IN_BINDTYPE_EMU = 0,
 	IN_BINDTYPE_PLAYER12,
 	IN_BINDTYPE_PLAYER34,
-	IN_BINDTYPE_COUNT
+	IN_BINDTYPE_PICO_PS2,
+	IN_BINDTYPE_COUNT,
 };
+
+#define IN_BIND_LAST 350 // See SDLK_LAST
 
 #define IN_BIND_OFFS(key, btype) \
 	((key) * IN_BINDTYPE_COUNT + (btype))
@@ -84,6 +87,7 @@ struct InputDriver {
 	int  (*get_config)(void *drv_data, int what, int *val);
 	int  (*set_config)(void *drv_data, int what, int val);
 	int  (*update)(void *drv_data, const int *binds, int *result);
+	int  (*update_pico_ps2)(void *drv_data, const int *binds, int *result);
 	int  (*update_analog)(void *drv_data, int axis_id, int *result);
 	/* return -1 on no event, -2 on error */
 	int  (*update_keycode)(void *drv_data, int *is_down);
@@ -92,6 +96,7 @@ struct InputDriver {
 	const char * (*get_key_name)(int keycode);
 
 	const struct in_default_bind *defbinds;
+	const struct in_default_bind *pico_ps2_binds;
 	const void *pdata;
 };
 
@@ -113,11 +118,14 @@ struct in_pdata {
 	const struct menu_keymap *joy_map;
 	size_t jmap_size;
 	const char * const *key_names;
+	const struct in_default_bind *pico_ps2_map;
 };
 
 /* to be called by drivers */
-int  in_register_driver(const in_drv_t *drv,
-			const struct in_default_bind *defbinds, const void *pdata);
+int in_register_driver(const in_drv_t *drv,
+			const struct in_default_bind *defbinds, 
+			const struct in_default_bind *pico_ps2_map, 
+			const void *pdata);
 void in_register(const char *nname, int drv_fd_hnd, void *drv_data,
 		int key_count, const char * const *key_names, int combos);
 void in_combos_find(const int *binds, int last_key, int *combo_keys, int *combo_acts);
@@ -128,6 +136,7 @@ void in_probe(void);
 int  in_update(int *result);
 int  in_update_analog(int dev_id, int axis_id, int *value);
 int  in_update_keycode(int *dev_id, int *is_down, char *charcode, int timeout_ms);
+int  in_update_pico_ps2(int *result);
 int  in_menu_wait_any(char *charcode, int timeout_ms);
 int  in_menu_wait(int interesting, char *charcode, int autorep_delay_ms);
 int  in_config_parse_dev(const char *dev_name);

@@ -445,6 +445,30 @@ static int in_sdl_update(void *drv_data, const int *binds, int *result)
 	return 0;
 }
 
+static int in_sdl_update_pico_ps2(void *drv_data, const int *binds, int *result)
+{
+	struct in_sdl_state *state = drv_data;
+	keybits_t mask;
+	int i, sym, bit, b;
+
+	collect_events(state, NULL, NULL);
+
+	for (i = 0; i < SDLK_LAST / KEYBITS_WORD_BITS + 1; i++) {
+		mask = state->keystate[i];
+		if (mask == 0)
+			continue;
+		for (bit = 0; mask != 0; bit++, mask >>= 1) {
+			if ((mask & 1) == 0)
+				continue;
+			sym = i * KEYBITS_WORD_BITS + bit;
+			result[sym] = binds[sym];
+		}
+	}
+
+	return 0;
+}
+
+
 static int in_sdl_update_keycode(void *drv_data, int *is_down)
 {
 	struct in_sdl_state *state = drv_data;
@@ -530,14 +554,15 @@ static int in_sdl_clean_binds(void *drv_data, int *binds, int *def_finds)
 }
 
 static const in_drv_t in_sdl_drv = {
-	.prefix         = IN_SDL_PREFIX,
-	.probe          = in_sdl_probe,
-	.free           = in_sdl_free,
-	.get_key_names  = in_sdl_get_key_names,
-	.update         = in_sdl_update,
-	.update_keycode = in_sdl_update_keycode,
-	.menu_translate = in_sdl_menu_translate,
-	.clean_binds    = in_sdl_clean_binds,
+	.prefix          = IN_SDL_PREFIX,
+	.probe           = in_sdl_probe,
+	.free            = in_sdl_free,
+	.get_key_names   = in_sdl_get_key_names,
+	.update          = in_sdl_update,
+	.update_pico_ps2 = in_sdl_update_pico_ps2,
+	.update_keycode  = in_sdl_update_keycode,
+	.menu_translate  = in_sdl_menu_translate,
+	.clean_binds     = in_sdl_clean_binds,
 };
 
 int in_sdl_init(const struct in_pdata *pdata, void (*handler)(void *event))
@@ -547,7 +572,7 @@ int in_sdl_init(const struct in_pdata *pdata, void (*handler)(void *event))
 		return -1;
 	}
 
-	in_register_driver(&in_sdl_drv, pdata->defbinds, pdata);
+	in_register_driver(&in_sdl_drv, pdata->defbinds, pdata->pico_ps2_map, pdata);
 	ext_event_handler = handler;
 	return 0;
 }

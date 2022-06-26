@@ -368,6 +368,11 @@ static int in_evdev_update(void *drv_data, const int *binds, int *result)
 	return 0;
 }
 
+static int in_evdev_update_pico_ps2(void *drv_data, const int *binds, int *result)
+{
+	return in_evdev_update(drv_data, binds, result);
+}
+
 static int in_evdev_update_analog(void *drv_data, int axis_id, int *result)
 {
 	struct input_absinfo ainfo;
@@ -607,17 +612,18 @@ static int in_evdev_clean_binds(void *drv_data, int *binds, int *def_binds)
 }
 
 static const in_drv_t in_evdev_drv = {
-	.prefix         = IN_EVDEV_PREFIX,
-	.probe          = in_evdev_probe,
-	.free           = in_evdev_free,
-	.get_key_names  = in_evdev_get_key_names,
-	.clean_binds    = in_evdev_clean_binds,
-	.get_config     = in_evdev_get_config,
-	.set_config     = in_evdev_set_config,
-	.update         = in_evdev_update,
-	.update_analog  = in_evdev_update_analog,
-	.update_keycode = in_evdev_update_keycode,
-	.menu_translate = in_evdev_menu_translate,
+	.prefix          = IN_EVDEV_PREFIX,
+	.probe           = in_evdev_probe,
+	.free            = in_evdev_free,
+	.get_key_names   = in_evdev_get_key_names,
+	.clean_binds     = in_evdev_clean_binds,
+	.get_config      = in_evdev_get_config,
+	.set_config      = in_evdev_set_config,
+	.update          = in_evdev_update,
+	.update_pico_ps2 = in_evdev_update_pico_ps2,
+	.update_analog   = in_evdev_update_analog,
+	.update_keycode  = in_evdev_update_keycode,
+	.menu_translate  = in_evdev_menu_translate,
 };
 
 int in_evdev_init(const struct in_pdata *pdata)

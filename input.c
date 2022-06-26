@@ -30,6 +30,7 @@ typedef struct
 	char *name;
 	int key_count;
 	int *binds;	/* total = key_count * bindtypes * 2 */
+	int *pico_ps2_binds;	/* total = key_count */
 	const char * const *key_names;
 	unsigned int probed:1;
 	unsigned int does_combos:1;
@@ -83,6 +84,31 @@ static int *in_alloc_binds(int drv_id, int key_count)
 	return binds;
 }
 
+static int *in_alloc_pico_ps2_binds(int drv_id, int key_count)
+{
+	const struct in_default_bind *defbinds;
+	int *binds;
+	int i;
+
+	binds = calloc(key_count * 2, sizeof(binds[0]));
+	if (binds == NULL)
+		return NULL;
+
+	/* always have a copy of defbinds */
+	defbinds = DRV(drv_id).pico_ps2_binds;
+	if (defbinds != NULL) {
+		for (i = 0; ; i++) {
+			if (defbinds[i].code == 0 && defbinds[i].btype == 0
+			    && defbinds[i].bit == 0)
+				break;
+
+			binds[defbinds[i].code] = defbinds[i].bit;
+		}
+	}
+
+	return binds;
+}
+
 static void in_unprobe(in_dev_t *dev)
 {
 	if (dev->probed)
@@ -105,7 +131,7 @@ static void in_free(in_dev_t *dev)
 void in_register(const char *nname, int drv_fd_hnd, void *drv_data,
 		int key_count, const char * const *key_names, int combos)
 {
-	int i, ret, dupe_count = 0, *binds;
+	int i, ret, dupe_count = 0, *binds, *pico_ps2_binds;
 	char name[256], *name_end, *tmp;
 
 	strncpy(name, nname, sizeof(name));
@@ -148,12 +174,18 @@ void in_register(const char *nname, int drv_fd_hnd, void *drv_data,
 		free(tmp);
 		return;
 	}
+	pico_ps2_binds = in_alloc_pico_ps2_binds(in_probe_dev_id, key_count);
+	if (pico_ps2_binds == NULL) {
+		free(tmp);
+		return;
+	}
 
 	memcpy(binds, binds + key_count * IN_BINDTYPE_COUNT,
 		sizeof(binds[0]) * key_count * IN_BINDTYPE_COUNT);
 
 	in_devices[i].name = tmp;
 	in_devices[i].binds = binds;
+	in_devices[i].pico_ps2_binds = pico_ps2_binds;
 	in_devices[i].key_count = key_count;
 	if (i + 1 > in_dev_count)
 		in_dev_count = i + 1;
@@ -295,6 +327,19 @@ int in_update(int *result)
 		in_dev_t *dev = &in_devices[i];
 		if (dev->probed && dev->binds != NULL)
 			ret |= DRV(dev->drv_id).update(dev->drv_data, dev->binds, result);
+	}
+
+	return ret;
+}
+
+int in_update_pico_ps2(int *result)
+{
+	int i, ret = 0;
+
+	for (i = 0; i < in_dev_count; i++) {
+		in_dev_t *dev = &in_devices[i];
+		if (dev->probed && dev->binds != NULL)
+			ret |= DRV(dev->drv_id).update_pico_ps2(dev->drv_data, dev->pico_ps2_binds, result);
 	}
 
 	return ret;
@@ -963,7 +1008,9 @@ static const char *in_def_get_key_name(int keycode) { return NULL; }
 
 /* to be called by drivers */
 int in_register_driver(const in_drv_t *drv,
-			const struct in_default_bind *defbinds, const void *pdata)
+			const struct in_default_bind *defbinds, 
+			const struct in_default_bind *pico_ps2_map, 
+			const void *pdata)
 {
 	int count_new = in_driver_count + 1;
 	in_drv_t *new_drivers;
@@ -989,6 +1036,8 @@ int in_register_driver(const in_drv_t *drv,
 		new_drivers[in_driver_count].pdata = pdata;
 	if (defbinds)
 		new_drivers[in_driver_count].defbinds = defbinds;
+	if (pico_ps2_map)
+		new_drivers[in_driver_count].pico_ps2_binds = pico_ps2_map;
 	in_drivers = new_drivers;
 	in_driver_count = count_new;
 
