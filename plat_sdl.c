@@ -125,7 +125,9 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   if (plat_target.vout_method == 0) {
     SDL_PumpEvents();
 
-#if defined(SDL_TRIPLEBUF) && defined(SDL_BUFFER_3X)
+#if defined SDL_SURFACE_SW
+    plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_SWSURFACE);
+#elif defined(SDL_TRIPLEBUF) && defined(SDL_BUFFER_3X)
     plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_HWSURFACE | SDL_TRIPLEBUF);
 #else
     plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);

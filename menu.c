@@ -207,10 +207,10 @@ static void smalltext_out16(int x, int y, const char *texto, int color)
 
 	if (maxw < 0)
 		return;
-
-	strncpy(buffer, texto, sizeof(buffer));
 	if (maxw > sizeof(buffer) - 1)
 		maxw = sizeof(buffer) - 1;
+
+	strncpy(buffer, texto, maxw);
 	buffer[maxw] = 0;
 
 	smalltext_out16_(x, y, buffer, color);
@@ -494,24 +494,12 @@ static int me_count(const menu_entry *ent)
 
 static unsigned int me_read_onoff(const menu_entry *ent)
 {
-	// guess var size based on mask to avoid reading too much
-	if (ent->mask & 0xffff0000)
-		return *(unsigned int *)ent->var & ent->mask;
-	else if (ent->mask & 0xff00)
-		return *(unsigned short *)ent->var & ent->mask;
-	else
-		return *(unsigned char *)ent->var & ent->mask;
+	return *(unsigned int *)ent->var & ent->mask;
 }
 
 static void me_toggle_onoff(menu_entry *ent)
 {
-	// guess var size based on mask to avoid reading too much
-	if (ent->mask & 0xffff0000)
-		*(unsigned int *)ent->var ^= ent->mask;
-	else if (ent->mask & 0xff00)
-		*(unsigned short *)ent->var ^= ent->mask;
-	else
-		*(unsigned char *)ent->var ^= ent->mask;
+	*(unsigned int *)ent->var ^= ent->mask;
 }
 
 static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
@@ -613,7 +601,7 @@ static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
 				name = ent->generate_name(ent->id, &offs);
 		}
 		if (name != NULL) {
-			text_out16(x, y, name);
+			text_out16(x, y, "%s", name);
 			leftname_end = x + (strlen(name) + 1) * me_mfont_w;
 		}
 
@@ -621,7 +609,7 @@ static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
 		case MB_NONE:
 			break;
 		case MB_OPT_ONOFF:
-			text_out16(x + col2_offs, y, me_read_onoff(ent) ? "ON" : "OFF");
+			text_out16(x + col2_offs, y, "%s", me_read_onoff(ent) ? "ON" : "OFF");
 			break;
 		case MB_OPT_RANGE:
 			text_out16(x + col2_offs, y, "%i", *(int *)ent->var);
@@ -642,10 +630,10 @@ static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
 				offs = x + col2_offs;
 				len = strlen(names[i]);
 				if (len > 10)
-					offs += (10 - len - 2) * me_mfont_w;
+					offs += (10 - len) * me_mfont_w;
 				if (offs < leftname_end)
 					offs = leftname_end;
-				if (i == *(unsigned char *)ent->var) {
+				if (i == *(int *)ent->var) {
 					text_out16(offs, y, "%s", names[i]);
 					break;
 				}
@@ -662,7 +650,7 @@ static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
 	h = (g_menuscreen_h - h) / 2; // bottom area height
 	if (menu_error_msg[0] != 0) {
 		if (h >= me_mfont_h + 4)
-			text_out16(5, g_menuscreen_h - me_mfont_h - 4, menu_error_msg);
+			text_out16(5, g_menuscreen_h - me_mfont_h - 4, "%s", menu_error_msg);
 		else
 			lprintf("menu msg doesn't fit!\n");
 
@@ -710,11 +698,11 @@ static int me_process(menu_entry *entry, int is_next, int is_lr)
 			names = (const char **)entry->data;
 			for (c = 0; names[c] != NULL; c++)
 				;
-			*(signed char *)entry->var += is_next ? 1 : -1;
-			if (*(signed char *)entry->var < 0)
-				*(signed char *)entry->var = 0;
-			if (*(signed char *)entry->var >= c)
-				*(signed char *)entry->var = c - 1;
+			*(int *)entry->var += is_next ? 1 : -1;
+			if (*(int *)entry->var < 0)
+				*(int *)entry->var = 0;
+			if (*(int *)entry->var >= c)
+				*(int *)entry->var = c - 1;
 			return 1;
 		default:
 			return 0;
@@ -825,7 +813,7 @@ static void draw_menu_message(const char *msg, void (*draw_more)(void))
 	menu_draw_begin(1, 0);
 
 	for (p = msg; *p != 0 && y <= g_menuscreen_h - me_mfont_h; y += me_mfont_h) {
-		text_out16(x, y, p);
+		text_out16(x, y, "%s", p);
 
 		for (; *p != 0 && *p != '\n'; p++)
 			;
@@ -867,7 +855,7 @@ static void do_delete(const char *fpath, const char *fname)
 	snprintf(tmp + len, sizeof(tmp) - len, "%s - cancel)", nm);
 	len = strlen(tmp);
 
-	text_out16(mid - me_mfont_w * len / 2, 12 * me_mfont_h, tmp);
+	text_out16(mid - me_mfont_w * len / 2, 12 * me_mfont_h, "%s", tmp);
 	menu_draw_end();
 
 	while (in_menu_wait_any(NULL, 50) & (PBTN_MENU|PBTN_MA2));
@@ -1437,13 +1425,13 @@ static void draw_key_config(const me_bind_action *opts, int opt_cnt, int player_
 		snprintf(buff2, sizeof(buff2), "%s", in_get_key_name(-1, -PBTN_MOK));
 		snprintf(buff, sizeof(buff), "%s - bind, %s - clear", buff2,
 				in_get_key_name(-1, -PBTN_MA2));
-		text_out16(x, g_menuscreen_h - 4 * me_mfont_h, buff);
+		text_out16(x, g_menuscreen_h - 4 * me_mfont_h, "%s", buff);
 	}
 	else
 		text_out16(x, g_menuscreen_h - 4 * me_mfont_h, "Press a button to bind/unbind");
 
 	if (dev_count > 1) {
-		text_out16(x, g_menuscreen_h - 3 * me_mfont_h, dev_name);
+		text_out16(x, g_menuscreen_h - 3 * me_mfont_h, "%s", dev_name);
 		text_out16(x, g_menuscreen_h - 2 * me_mfont_h, "Press left/right for other devs");
 	}
 

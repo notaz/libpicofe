@@ -62,7 +62,7 @@ int sndout_sdl_init(void)
 
 int sndout_sdl_start(int rate, int stereo)
 {
-	SDL_AudioSpec desired;
+	SDL_AudioSpec desired = { 0 };
 	int samples, shift;
 	int ret;
 
@@ -70,7 +70,7 @@ int sndout_sdl_start(int rate, int stereo)
 		sndout_sdl_stop();
 
 	desired.freq = rate;
-	desired.format = AUDIO_S16LSB;
+	desired.format = AUDIO_S16SYS;
 	desired.channels = stereo ? 2 : 1;
 	desired.callback = callback;
 	desired.userdata = NULL;

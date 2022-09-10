@@ -80,12 +80,14 @@ int readpng(void *dest, const char *fname, readpng_what what, int req_w, int req
 			if (width > req_w) {
 				x_ofs = (width - req_w) / 2;
 				width = req_w;
-			}
+			} else
+				dst += (req_w - width) / 2;
 			height = png_get_image_height(png_ptr, info_ptr);
 			if (height > req_h) {
 				y_ofs = (height - req_h) / 2;
 				height = req_h;
-			}
+			} else
+				dst += (req_h - height) / 2 * req_w;
 
 			for (h = 0; h < height; h++)
 			{
