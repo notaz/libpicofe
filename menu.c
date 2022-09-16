@@ -981,7 +981,6 @@ static int dirent_seek_char(struct dirent **namelist, int len, int sel, char c)
 {
 	int i;
 
-	sel++;
 	for (i = sel + 1; ; i++) {
 		if (i >= len)
 			i = 1;
@@ -992,7 +991,7 @@ static int dirent_seek_char(struct dirent **namelist, int len, int sel, char c)
 			break;
 	}
 
-	return i - 1;
+	return i;
 }
 
 static const char *menu_loop_romsel(char *curr_path, int len,
