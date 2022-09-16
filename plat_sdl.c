@@ -41,6 +41,14 @@ int plat_sdl_change_video_mode(int w, int h, int force)
 {
   static int prev_w, prev_h;
 
+  // skip GL recreation if window doesn't change - avoids flicker
+  if (plat_target.vout_method == vout_mode_gl && plat_sdl_gl_active
+      && plat_target.vout_fullscreen == old_fullscreen
+      && w == prev_w && h == prev_h && !force)
+  {
+    return 0;
+  }
+
   if (w == 0)
     w = prev_w;
   else
@@ -58,13 +66,6 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   {
     fprintf(stderr, "invalid vout_method: %d\n", plat_target.vout_method);
     plat_target.vout_method = 0;
-  }
-
-  // skip GL recreation if window doesn't change - avoids flicker
-  if (plat_target.vout_method == vout_mode_gl && plat_sdl_gl_active
-      && plat_target.vout_fullscreen == old_fullscreen && !force)
-  {
-    return 0;
   }
 
   if (plat_sdl_overlay != NULL) {

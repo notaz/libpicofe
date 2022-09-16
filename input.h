@@ -21,6 +21,7 @@
 #define PBTN_MENU  (1 << 10)
 
 #define PBTN_CHAR  (1 << 11)	/* character (text input) */
+#define PBTN_RDRAW (1 << 12)	/* redraw event */
 
 // TODO: move to pico
 #if 0

@@ -24,6 +24,9 @@ struct in_sdl_state {
 	SDL_Joystick *joy;
 	int joy_id;
 	int axis_keydown[2];
+#ifdef SDL_REDRAW_EVT
+	int rdraw;
+#endif
 	keybits_t keystate[SDLK_LAST / KEYBITS_WORD_BITS + 1];
 	// emulator keys should always be processed immediately lest one is lost
 	keybits_t emu_keys[SDLK_LAST / KEYBITS_WORD_BITS + 1];
@@ -274,7 +277,7 @@ static int handle_event(struct in_sdl_state *state, SDL_Event *event,
 		*kc_out = event->key.keysym.sym;
 	if (down_out != NULL)
 		*down_out = event->type == SDL_KEYDOWN;
-	if (emu_out != 0)
+	if (emu_out != NULL)
 		*emu_out = emu;
 
 	return 1;
@@ -354,11 +357,21 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 {
 	SDL_Event events[4];
 	Uint32 mask = state->joy ? JOY_EVENTS : (SDL_ALLEVENTS & ~JOY_EVENTS);
-	int count, maxcount, is_emukey;
+	int count, maxcount, is_emukey = 0;
 	int i, ret, retval = 0;
 	int num_events, num_peeped_events;
 	SDL_Event *event;
 
+#ifdef SDL_REDRAW_EVT
+	if (state->rdraw) {
+		if (one_kc != NULL)
+			*one_kc = SDLK_UNKNOWN;
+		if (one_down != NULL)
+			*one_down = 0;
+		state->rdraw = 0;
+		return 1;
+	}
+#endif
 	maxcount = (one_kc != NULL) ? 1 : sizeof(events) / sizeof(events[0]);
 
 	SDL_PumpEvents();
@@ -388,11 +401,21 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 							ext_event_handler(event);
 						break;
 				}
-				continue;
+#ifdef SDL_REDRAW_EVT
+				if (ret != -2 && event->type == SDL_VIDEORESIZE) {
+					if (one_kc != NULL)
+						*one_kc = SDLK_UNKNOWN;
+					if (one_down != NULL)
+						*one_down = 1;
+					state->rdraw = 1;
+					is_emukey = 1, ret = 1;
+				} else
+					continue;
+#endif
 			}
 
 			retval |= ret;
-			if ((is_emukey || one_kc != NULL) && ret)
+			if ((is_emukey || one_kc != NULL) && retval)
 			{
 				// don't lose events other devices might want to handle
 				if (++i < count)
@@ -475,6 +498,11 @@ static int in_sdl_menu_translate(void *drv_data, int keycode, char *charcode)
 	}
 	else
 	{
+#ifdef SDL_REDRAW_EVT
+		if (keycode == SDLK_UNKNOWN)
+			ret = PBTN_RDRAW;
+		else
+#endif
 		for (i = 0; i < map_len; i++) {
 			if (map[i].key == keycode) {
 				ret = map[i].pbtn;
