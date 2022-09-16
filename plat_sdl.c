@@ -117,7 +117,8 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     }
   }
   else if (plat_target.vout_method == vout_mode_gl) {
-    plat_sdl_gl_active = (gl_init(display, window, &gl_quirks) == 0);
+    int sw = plat_sdl_screen->w, sh = plat_sdl_screen->h;
+    plat_sdl_gl_active = (gl_init(display, window, &gl_quirks, sw, sh) == 0);
     if (!plat_sdl_gl_active) {
       fprintf(stderr, "warning: could not init GL.\n");
       plat_target.vout_method = 0;
@@ -185,8 +186,9 @@ void plat_sdl_event_handler(void *event_)
       }
       else if (plat_sdl_gl_active) {
         if (gl_quirks & GL_QUIRK_ACTIVATE_RECREATE) {
+          int sw = plat_sdl_screen->w, sh = plat_sdl_screen->h;
           gl_finish();
-          plat_sdl_gl_active = (gl_init(display, window, &gl_quirks) == 0);
+          plat_sdl_gl_active = (gl_init(display, window, &gl_quirks, sw, sh) == 0);
         }
         gl_flip(NULL, 0, 0);
       }
@@ -311,7 +313,7 @@ int plat_sdl_init(void)
   if (env)
     try_gl = atoi(env);
   if (try_gl)
-    ret = gl_init(display, window, &gl_quirks);
+    ret = gl_init(display, window, &gl_quirks, g_menuscreen_w, g_menuscreen_h);
   if (ret == 0) {
     gl_announce();
     gl_works = 1;
