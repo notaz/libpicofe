@@ -983,7 +983,7 @@ static int dirent_seek_char(struct dirent **namelist, int len, int sel, char c)
 
 	for (i = sel + 1; ; i++) {
 		if (i >= len)
-			i = 1;
+			i = 0;
 		if (i == sel)
 			break;
 
