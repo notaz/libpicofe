@@ -1108,14 +1108,14 @@ rescan:
 				namelist[sel]->d_name);
 			goto rescan;
 		}
-		if (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = n-1; }
-		if (inp & PBTN_DOWN)  { sel++;   if (sel > n-1) sel = 0; }
-		if (inp & PBTN_LEFT)  { sel-=10; if (sel < 0)   sel = 0; }
-		if (inp & PBTN_L)     { sel-=24; if (sel < 0)   sel = 0; }
-		if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-1) sel = n-1; }
-		if (inp & PBTN_R)     { sel+=24; if (sel > n-1) sel = n-1; }
+		if      (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = n-1; }
+		else if (inp & PBTN_DOWN)  { sel++;   if (sel > n-1) sel = 0; }
+		else if (inp & PBTN_LEFT)  { sel-=10; if (sel < 0)   sel = 0; }
+		else if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-1) sel = n-1; }
+		else if (inp & PBTN_L)     { sel-=24; if (sel < 0)   sel = 0; }
+		else if (inp & PBTN_R)     { sel+=24; if (sel > n-1) sel = n-1; }
 
-		if ((inp & PBTN_MOK) || (inp & (PBTN_MENU|PBTN_MA2)) == (PBTN_MENU|PBTN_MA2))
+		else if ((inp & PBTN_MOK) || (inp & (PBTN_MENU|PBTN_MA2)) == (PBTN_MENU|PBTN_MA2))
 		{
 			if (namelist[sel]->d_type == DT_REG)
 			{
