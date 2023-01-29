@@ -66,9 +66,9 @@ void vout_fbdev_wait_vsync(struct vout_fbdev *fbdev)
 	ioctl(fbdev->fd, FBIO_WAITFORVSYNC, &arg);
 }
 
-/* it is recommended to call vout_fbdev_clear() before this */
 void *vout_fbdev_resize(struct vout_fbdev *fbdev, int w, int h, int bpp,
-		      int left_border, int right_border, int top_border, int bottom_border, int buffer_cnt)
+	int left_border, int right_border, int top_border, int bottom_border,
+	int buffer_cnt, int first_write_to_front)
 {
 	int w_total = left_border + w + right_border;
 	int h_total = top_border + h + bottom_border;
@@ -100,9 +100,8 @@ void *vout_fbdev_resize(struct vout_fbdev *fbdev, int w, int h, int bpp,
 		fbdev->fbvar_new.nonstd = 0; // can set YUV here on omapfb
 		fbdev->buffer_count = buffer_cnt;
 		fbdev->buffer_write = buffer_cnt > 1 ? 1 : 0;
-
-		// seems to help a bit to avoid glitches
-		vout_fbdev_wait_vsync(fbdev);
+		if (first_write_to_front)
+			fbdev->buffer_write = 0;
 
 		ret = ioctl(fbdev->fd, FBIOPUT_VSCREENINFO, &fbdev->fbvar_new);
 		if (ret == -1) {
@@ -119,6 +118,9 @@ void *vout_fbdev_resize(struct vout_fbdev *fbdev, int w, int h, int bpp,
 					"multibuffering disabled\n");
 		}
 
+		// omap is still using the old mode until vsync,
+		// if the caller starts to write now we may get garbage on screen
+		vout_fbdev_wait_vsync(fbdev);
 	}
 
 	fbdev->fb_size = w_total * h_total * bpp / 8;
@@ -155,7 +157,8 @@ out:
 
 void vout_fbdev_clear(struct vout_fbdev *fbdev)
 {
-	memset(fbdev->mem, 0, fbdev->mem_size);
+	if (fbdev->mem)
+		memset(fbdev->mem, 0, fbdev->fb_size * fbdev->buffer_count);
 }
 
 void vout_fbdev_clear_lines(struct vout_fbdev *fbdev, int y, int count)
@@ -209,7 +212,7 @@ struct vout_fbdev *vout_fbdev_init(const char *fbdev_name, int *w, int *h, int b
 	if (*h != 0)
 		req_h = *h;
 
-	pret = vout_fbdev_resize(fbdev, req_w, req_h, bpp, 0, 0, 0, 0, buffer_cnt);
+	pret = vout_fbdev_resize(fbdev, req_w, req_h, bpp, 0, 0, 0, 0, buffer_cnt, 0);
 	if (pret == NULL)
 		goto fail;
 
