@@ -981,10 +981,9 @@ static int dirent_seek_char(struct dirent **namelist, int len, int sel, char c)
 {
 	int i;
 
-	sel++;
 	for (i = sel + 1; ; i++) {
 		if (i >= len)
-			i = 1;
+			i = 0;
 		if (i == sel)
 			break;
 
@@ -992,7 +991,7 @@ static int dirent_seek_char(struct dirent **namelist, int len, int sel, char c)
 			break;
 	}
 
-	return i - 1;
+	return i;
 }
 
 static const char *menu_loop_romsel(char *curr_path, int len,
@@ -1109,14 +1108,14 @@ rescan:
 				namelist[sel]->d_name);
 			goto rescan;
 		}
-		if (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = n-1; }
-		if (inp & PBTN_DOWN)  { sel++;   if (sel > n-1) sel = 0; }
-		if (inp & PBTN_LEFT)  { sel-=10; if (sel < 0)   sel = 0; }
-		if (inp & PBTN_L)     { sel-=24; if (sel < 0)   sel = 0; }
-		if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-1) sel = n-1; }
-		if (inp & PBTN_R)     { sel+=24; if (sel > n-1) sel = n-1; }
+		if      (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = n-1; }
+		else if (inp & PBTN_DOWN)  { sel++;   if (sel > n-1) sel = 0; }
+		else if (inp & PBTN_LEFT)  { sel-=10; if (sel < 0)   sel = 0; }
+		else if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-1) sel = n-1; }
+		else if (inp & PBTN_L)     { sel-=24; if (sel < 0)   sel = 0; }
+		else if (inp & PBTN_R)     { sel+=24; if (sel > n-1) sel = n-1; }
 
-		if ((inp & PBTN_MOK) || (inp & (PBTN_MENU|PBTN_MA2)) == (PBTN_MENU|PBTN_MA2))
+		else if ((inp & PBTN_MOK) || (inp & (PBTN_MENU|PBTN_MA2)) == (PBTN_MENU|PBTN_MA2))
 		{
 			if (namelist[sel]->d_type == DT_REG)
 			{
@@ -1319,10 +1318,10 @@ static char *action_binds(int player_idx, int action_mask, int dev_id)
 	type = IN_BINDTYPE_EMU;
 	if (player_idx >= 0) {
 		can_combo = 0;
-		type = IN_BINDTYPE_PLAYER12;
+		type = IN_BINDTYPE_PLAYER12 + (player_idx >> 1);
+		if (player_idx & 1)
+			action_mask <<= 16;
 	}
-	if (player_idx == 1)
-		action_mask <<= 16;
 
 	if (dev_id >= 0)
 		dev = dev_last = dev_id;
@@ -1459,9 +1458,12 @@ static void key_config_loop(const me_bind_action *opts, int opt_cnt, int player_
 
 	dev_id = -1; // show all
 	mask_shift = 0;
-	if (player_idx == 1)
-		mask_shift = 16;
-	bindtype = player_idx >= 0 ? IN_BINDTYPE_PLAYER12 : IN_BINDTYPE_EMU;
+	if (player_idx >= 0) {
+		if (player_idx & 1)
+			mask_shift = 16;
+		bindtype = IN_BINDTYPE_PLAYER12 + (player_idx >> 1);
+	} else
+		bindtype = IN_BINDTYPE_EMU;
 
 	for (;;)
 	{

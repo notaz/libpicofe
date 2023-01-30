@@ -21,6 +21,7 @@
 #define PBTN_MENU  (1 << 10)
 
 #define PBTN_CHAR  (1 << 11)	/* character (text input) */
+#define PBTN_RDRAW (1 << 12)	/* redraw event */
 
 // TODO: move to pico
 #if 0
@@ -70,6 +71,7 @@ enum {
 	IN_BINDTYPE_NONE = -1,
 	IN_BINDTYPE_EMU = 0,
 	IN_BINDTYPE_PLAYER12,
+	IN_BINDTYPE_PLAYER34,
 	IN_BINDTYPE_COUNT
 };
 

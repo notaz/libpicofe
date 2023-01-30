@@ -75,7 +75,7 @@ int plat_get_skin_dir(char *dst, int len)
 {
 	int ret = plat_get_exe_dir(dst, len);
 	if (ret < 0)
-		return ret;
+		ret = 0;
 
 	memcpy(dst + ret, "skin/", sizeof "skin/");
 	return ret + sizeof("skin/") - 1;

@@ -462,6 +462,9 @@ int in_menu_wait(int interesting, char *charcode, int autorep_delay_ms)
 		wait = autorep_delay_ms;
 
 	/* wait until either key repeat or a new key has been pressed */
+#ifdef SDL_REDRAW_EVT
+	interesting |= PBTN_RDRAW;
+#endif
 	do {
 		ret = in_menu_wait_any(charcode, wait);
 		if (ret == 0 || ret != menu_key_prev)

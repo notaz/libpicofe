@@ -28,9 +28,10 @@ void (*plat_sdl_resize_cb)(int w, int h);
 void (*plat_sdl_quit_cb)(void);
 
 static char vid_drv_name[32];
-static int window_w, window_h;
+static int window_w, window_h, window_b;
 static int fs_w, fs_h;
 static int old_fullscreen;
+static int screen_flags;
 static int vout_mode_overlay = -1, vout_mode_overlay2x = -1, vout_mode_gl = -1;
 static void *display, *window;
 static int gl_quirks;
@@ -39,6 +40,14 @@ static int gl_quirks;
 int plat_sdl_change_video_mode(int w, int h, int force)
 {
   static int prev_w, prev_h;
+
+  // skip GL recreation if window doesn't change - avoids flicker
+  if (plat_target.vout_method == vout_mode_gl && plat_sdl_gl_active
+      && plat_target.vout_fullscreen == old_fullscreen
+      && w == prev_w && h == prev_h && !force)
+  {
+    return 0;
+  }
 
   if (w == 0)
     w = prev_w;
@@ -57,13 +66,6 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   {
     fprintf(stderr, "invalid vout_method: %d\n", plat_target.vout_method);
     plat_target.vout_method = 0;
-  }
-
-  // skip GL recreation if window doesn't change - avoids flicker
-  if (plat_target.vout_method == vout_mode_gl && plat_sdl_gl_active
-      && plat_target.vout_fullscreen == old_fullscreen && !force)
-  {
-    return 0;
   }
 
   if (plat_sdl_overlay != NULL) {
@@ -90,7 +92,10 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     // (seen on r-pi)
     SDL_PumpEvents();
 
-    plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 0, flags);
+    if (!plat_sdl_screen || screen_flags != flags ||
+        plat_sdl_screen->w != win_w || plat_sdl_screen->h != win_h)
+      plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 0, flags);
+    screen_flags = flags;
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       plat_target.vout_method = 0;
@@ -99,7 +104,7 @@ int plat_sdl_change_video_mode(int w, int h, int force)
 
   if (plat_target.vout_method == vout_mode_overlay
       || plat_target.vout_method == vout_mode_overlay2x) {
-    int W = plat_target.vout_method == vout_mode_overlay2x && w == 320 ? 2*w : w;
+    int W = plat_target.vout_method == vout_mode_overlay2x && w < 640 ? 2*w : w;
     plat_sdl_overlay = SDL_CreateYUVOverlay(W, h, SDL_UYVY_OVERLAY, plat_sdl_screen);
     if (plat_sdl_overlay != NULL && SDL_LockYUVOverlay(plat_sdl_overlay) == 0) {
       if ((long)plat_sdl_overlay->pixels[0] & 3)
@@ -115,7 +120,8 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     }
   }
   else if (plat_target.vout_method == vout_mode_gl) {
-    plat_sdl_gl_active = (gl_init(display, window, &gl_quirks) == 0);
+    int sw = plat_sdl_screen->w, sh = plat_sdl_screen->h;
+    plat_sdl_gl_active = (gl_init(display, window, &gl_quirks, sw, sh) == 0);
     if (!plat_sdl_gl_active) {
       fprintf(stderr, "warning: could not init GL.\n");
       plat_target.vout_method = 0;
@@ -123,15 +129,29 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   }
 
   if (plat_target.vout_method == 0) {
-    SDL_PumpEvents();
+    Uint32 flags;
+    int win_w = w;
+    int win_h = h;
 
 #if defined SDL_SURFACE_SW
-    plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_SWSURFACE);
+    flags = SDL_SWSURFACE;
 #elif defined(SDL_TRIPLEBUF) && defined(SDL_BUFFER_3X)
-    plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_HWSURFACE | SDL_TRIPLEBUF);
+    flags = SDL_HWSURFACE | SDL_TRIPLEBUF;
 #else
-    plat_sdl_screen = SDL_SetVideoMode(w, h, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
 #endif
+    if (plat_target.vout_fullscreen && fs_w && fs_h) {
+      flags |= SDL_FULLSCREEN;
+      win_w = fs_w;
+      win_h = fs_h;
+    }
+
+    SDL_PumpEvents();
+
+    if (!plat_sdl_screen || screen_flags != flags ||
+        plat_sdl_screen->w != win_w || plat_sdl_screen->h != win_h)
+      plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 16, flags);
+    screen_flags = flags;
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       return -1;
@@ -156,8 +176,8 @@ void plat_sdl_event_handler(void *event_)
     if (plat_target.vout_method != 0
         && !plat_target.vout_fullscreen && !old_fullscreen)
     {
-      window_w = event->resize.w;
-      window_h = event->resize.h;
+      window_w = event->resize.w & ~3;
+      window_h = event->resize.h & ~3;
       plat_sdl_change_video_mode(0, 0, 1);
     }
     break;
@@ -169,8 +189,9 @@ void plat_sdl_event_handler(void *event_)
       }
       else if (plat_sdl_gl_active) {
         if (gl_quirks & GL_QUIRK_ACTIVATE_RECREATE) {
+          int sw = plat_sdl_screen->w, sh = plat_sdl_screen->h;
           gl_finish();
-          plat_sdl_gl_active = (gl_init(display, window, &gl_quirks) == 0);
+          plat_sdl_gl_active = (gl_init(display, window, &gl_quirks, sw, sh) == 0);
         }
         gl_flip(NULL, 0, 0);
       }
@@ -206,6 +227,8 @@ int plat_sdl_init(void)
   if (info != NULL) {
     fs_w = info->current_w;
     fs_h = info->current_h;
+    if (info->wm_available)
+      window_b = WM_DECORATION_H;
     printf("plat_sdl: using %dx%d as fullscreen resolution\n", fs_w, fs_h);
   }
 
@@ -215,14 +238,14 @@ int plat_sdl_init(void)
   g_menuscreen_h = 480;
   if (fs_h != 0) {
     h = fs_h;
-    if (info && info->wm_available && h > WM_DECORATION_H)
-      h -= WM_DECORATION_H;
+    if (window_b && h > window_b)
+      h -= window_b;
     if (g_menuscreen_h > h)
       g_menuscreen_h = h;
   }
 
-  ret = plat_sdl_change_video_mode(g_menuscreen_w, g_menuscreen_h, 1);
-  if (ret != 0) {
+  plat_sdl_screen = SDL_SetVideoMode(g_menuscreen_w, g_menuscreen_h, 16, SDL_HWSURFACE);
+  if (plat_sdl_screen == NULL) {
     plat_sdl_screen = SDL_SetVideoMode(0, 0, 16, SDL_SWSURFACE);
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
@@ -293,7 +316,7 @@ int plat_sdl_init(void)
   if (env)
     try_gl = atoi(env);
   if (try_gl)
-    ret = gl_init(display, window, &gl_quirks);
+    ret = gl_init(display, window, &gl_quirks, g_menuscreen_w, g_menuscreen_h);
   if (ret == 0) {
     gl_announce();
     gl_works = 1;
@@ -347,10 +370,10 @@ void plat_sdl_overlay_clear(void)
   int *dst = (int *)plat_sdl_overlay->pixels[0];
   int v = 0x10801080;
 
-  for (; pixels > 0; dst += 4, pixels -= 2 * 4)
+  for (; pixels > 7; dst += 4, pixels -= 2 * 4)
     dst[0] = dst[1] = dst[2] = dst[3] = v;
 
-  for (; pixels > 0; dst++, pixels -= 2)
+  for (; pixels > 1; dst++, pixels -= 2)
     *dst = v;
 }
 

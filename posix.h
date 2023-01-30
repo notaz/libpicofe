@@ -23,12 +23,14 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#ifndef DT_DIR
 /* map PSP names to posix. needs special scandir() function to mask rwx bits */
 #define d_type d_stat.st_attr
 #define DT_LNK FIO_SO_IFLNK
 #define DT_DIR FIO_SO_IFDIR
 #define DT_REG FIO_SO_IFREG
 #define DT_UNKNOWN 0
+#endif
 
 #else
 

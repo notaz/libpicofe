@@ -92,6 +92,22 @@ void config_write_keys(FILE *f)
 				}
 			}
 
+			kbinds = binds[IN_BIND_OFFS(k, IN_BINDTYPE_PLAYER34)];
+			for (i = 0; kbinds && me_ctrl_actions[i].name != NULL; i++) {
+				mask = me_ctrl_actions[i].mask;
+				if (mask & kbinds) {
+					strncpy(act, me_ctrl_actions[i].name, 31);
+					fprintf(f, "bind %s = player3 %s\n", name, mystrip(act));
+					kbinds &= ~mask;
+				}
+				mask = me_ctrl_actions[i].mask << 16;
+				if (mask & kbinds) {
+					strncpy(act, me_ctrl_actions[i].name, 31);
+					fprintf(f, "bind %s = player4 %s\n", name, mystrip(act));
+					kbinds &= ~mask;
+				}
+			}
+
 			kbinds = binds[IN_BIND_OFFS(k, IN_BINDTYPE_EMU)];
 			for (i = 0; kbinds && emuctrl_actions[i].name != NULL; i++) {
 				mask = emuctrl_actions[i].mask;
@@ -126,12 +142,12 @@ static int parse_bind_val(const char *val, int *type)
 		int player, shift = 0;
 		player = atoi(val + 6) - 1;
 
-		if ((unsigned int)player > 1)
+		if ((unsigned int)player > 3)
 			return -1;
-		if (player == 1)
+		if (player & 1)
 			shift = 16;
 
-		*type = IN_BINDTYPE_PLAYER12;
+		*type = IN_BINDTYPE_PLAYER12 + (player >> 1);
 		for (i = 0; me_ctrl_actions[i].name != NULL; i++) {
 			if (strncasecmp(me_ctrl_actions[i].name, val + 8, strlen(val + 8)) == 0)
 				return me_ctrl_actions[i].mask << shift;
