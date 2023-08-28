@@ -263,6 +263,7 @@ static void in_evdev_probe(const in_drv_t *drv)
 
 no_abs:
 		if (count == 0 && !have_abs) {
+			free(dev->kbits);
 			free(dev);
 			goto skip;
 		}
