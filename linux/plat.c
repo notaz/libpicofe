@@ -58,7 +58,13 @@ static int plat_get_exe_dir(char *dst, int len)
 	memcpy(dst, PICO_DATA_DIR, sizeof PICO_DATA_DIR);
 	return sizeof(PICO_DATA_DIR) - 1;
 #else
-	int j, ret = readlink("/proc/self/exe", dst, len - 1);
+	int j, ret = readlink(
+#ifdef __FreeBSD__
+	"/proc/curproc/file",
+#else
+	"/proc/self/exe",
+#endif
+	dst, len - 1);
 	if (ret < 0) {
 		perror("readlink");
 		ret = 0;
