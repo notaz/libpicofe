@@ -2,7 +2,7 @@
 #define LIBPICOFE_POSIX_H
 
 /* define POSIX stuff: dirent, scandir, getcwd, mkdir */
-#if defined(__MACH__) || defined(__linux__) || defined(__MINGW32__)
+#if defined(__FreeBSD__) || defined(__MACH__) || defined(__linux__) || defined(__MINGW32__)
 
 #include <dirent.h>
 #include <unistd.h>

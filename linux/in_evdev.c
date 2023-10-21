@@ -17,7 +17,11 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#ifdef __FreeBSD__
+#include <dev/evdev/input.h>
+#else
 #include <linux/input.h>
+#endif
 #include <errno.h>
 
 #include "../input.h"
