@@ -1038,16 +1038,17 @@ rescan:
 		filter = scandir_filter;
 
 	n = scandir(curr_path, &namelist, filter, (void *)scandir_cmp);
-	if (n < 0) {
+	if (n < 0 || !namelist) {
 		lprintf("menu_loop_romsel failed, dir: %s\n", curr_path);
 
 		// try data root
 		plat_get_data_dir(curr_path, len);
 		n = scandir(curr_path, &namelist, filter, (void *)scandir_cmp);
-		if (n < 0) {
+		if (n < 0 || !namelist) {
 			// oops, we failed
 			lprintf("menu_loop_romsel failed, dir: %s\n", curr_path);
-			return NULL;
+			namelist = malloc(sizeof(*namelist));
+			namelist[0] = calloc(1, sizeof(**namelist));
 		}
 	}
 
@@ -1108,12 +1109,13 @@ rescan:
 				namelist[sel]->d_name);
 			goto rescan;
 		}
-		if      (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = n-1; }
+		int last = n ? n-1 : 0;
+		if      (inp & PBTN_UP  )  { sel--;   if (sel < 0)   sel = last; }
 		else if (inp & PBTN_DOWN)  { sel++;   if (sel > n-1) sel = 0; }
 		else if (inp & PBTN_LEFT)  { sel-=10; if (sel < 0)   sel = 0; }
-		else if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-1) sel = n-1; }
+		else if (inp & PBTN_RIGHT) { sel+=10; if (sel > n-1) sel = last; }
 		else if (inp & PBTN_L)     { sel-=24; if (sel < 0)   sel = 0; }
-		else if (inp & PBTN_R)     { sel+=24; if (sel > n-1) sel = n-1; }
+		else if (inp & PBTN_R)     { sel+=24; if (sel > n-1) sel = last; }
 
 		else if ((inp & PBTN_MOK) || (inp & (PBTN_MENU|PBTN_MA2)) == (PBTN_MENU|PBTN_MA2))
 		{
