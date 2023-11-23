@@ -994,10 +994,11 @@ static int dirent_seek_char(struct dirent **namelist, int len, int sel, char c)
 	return i;
 }
 
-static const char *menu_loop_romsel(char *curr_path, int len,
+static const char *menu_loop_romsel_d(char *curr_path, int len,
 	const char **filter_exts,
 	int (*extra_filter)(struct dirent **namelist, int count,
-			    const char *basedir))
+			    const char *basedir),
+	void (*draw_prep)(void))
 {
 	static char rom_fname_reload[256]; // used for scratch and return
 	char sel_fname[256];
@@ -1020,13 +1021,12 @@ static const char *menu_loop_romsel(char *curr_path, int len,
 			curr_path_restore = p;
 			snprintf(sel_fname, sizeof(sel_fname), "%s", p + 1);
 		}
-
-		if (rom_fname_reload[0] == 0)
-			show_help = 2;
 	}
+	show_help = 2;
 
 rescan:
 	if (namelist != NULL) {
+		n += !n;
 		while (n-- > 0)
 			free(namelist[n]);
 		free(namelist);
@@ -1099,6 +1099,8 @@ rescan:
 
 	for (;;)
 	{
+		if (draw_prep != NULL)
+			draw_prep();
 		draw_dirlist(curr_path, namelist, n, sel, show_help);
 		inp = in_menu_wait(PBTN_UP|PBTN_DOWN|PBTN_LEFT|PBTN_RIGHT
 			| PBTN_L|PBTN_R|PBTN_MA2|PBTN_MA3|PBTN_MOK|PBTN_MBACK
@@ -1107,6 +1109,7 @@ rescan:
 			g_menu_filter_off = !g_menu_filter_off;
 			snprintf(sel_fname, sizeof(sel_fname), "%s",
 				namelist[sel]->d_name);
+			show_help = 2;
 			goto rescan;
 		}
 		int last = n ? n-1 : 0;
@@ -1156,7 +1159,7 @@ rescan:
 					strcat(newdir, "/");
 					strcat(newdir, namelist[sel]->d_name);
 				}
-				ret = menu_loop_romsel(newdir, newlen, filter_exts, extra_filter);
+				ret = menu_loop_romsel_d(newdir, newlen, filter_exts, extra_filter, draw_prep);
 				free(newdir);
 				break;
 			}
@@ -1188,6 +1191,14 @@ rescan:
 		*curr_path_restore = '/';
 
 	return ret;
+}
+
+static const char *menu_loop_romsel(char *curr_path, int len,
+	const char **filter_exts,
+	int (*extra_filter)(struct dirent **namelist, int count,
+			    const char *basedir))
+{
+	return menu_loop_romsel_d(curr_path, len, filter_exts, extra_filter, NULL);
 }
 
 // ------------ savestate loader ------------
