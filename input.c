@@ -44,7 +44,6 @@ static int in_probe_dev_id;
 static int menu_key_state = 0;
 static int menu_last_used_dev = 0;
 static int menu_key_prev = 0;
-static int menu_key_mask = 0;
 static int menu_key_repeat = 0;
 
 #define DRV(id) in_drivers[id]
@@ -446,9 +445,7 @@ int in_menu_wait_any(char *charcode, int timeout_ms)
 
 	ret = menu_key_state;
 	if (ret == 0)
-		menu_key_mask = menu_key_prev = 0;
-	else if (ret != menu_key_prev)
-		menu_key_mask = menu_key_prev;
+		menu_key_prev = 0;
 
 	return ret;
 }
@@ -472,9 +469,6 @@ int in_menu_wait(int interesting, char *charcode, int autorep_delay_ms)
 		else
 			menu_key_repeat++;
 		wait = -1;
-	 	/* mask away all old keys if an additional new key is pressed */
-		/* XXX what if old and new keys share bits (PBTN_CHAR)? */
-		ret &= ~menu_key_mask;
 	} while (!(ret & interesting));
 
 	/* we don't need diagonals in menus */
