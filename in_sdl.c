@@ -355,33 +355,16 @@ static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
 
 static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down)
 {
-	SDL_Event events[4];
+	SDL_Event events[8];
 	Uint32 mask = state->joy ? JOY_EVENTS : (SDL_ALLEVENTS & ~JOY_EVENTS);
 	int count, maxcount, is_emukey = 0;
-	int i, ret, retval = 0;
-	int num_events, num_peeped_events;
+	int i = 0, ret = 0, retval = 0;
 	SDL_Event *event;
-
-#ifdef SDL_REDRAW_EVT
-	if (state->rdraw) {
-		if (one_kc != NULL)
-			*one_kc = SDLK_UNKNOWN;
-		if (one_down != NULL)
-			*one_down = 0;
-		state->rdraw = 0;
-		return 1;
-	}
-#endif
-	maxcount = (one_kc != NULL) ? 1 : sizeof(events) / sizeof(events[0]);
 
 	SDL_PumpEvents();
 
-	num_events = SDL_PeepEvents(NULL, 0, SDL_PEEKEVENT, mask);
-
-	for (num_peeped_events = 0; num_peeped_events < num_events; num_peeped_events += count) {
-		count = SDL_PeepEvents(events, maxcount, SDL_GETEVENT, mask);
-		if (count <= 0)
-			break;
+	maxcount = sizeof(events) / sizeof(events[0]);
+	if ((count = SDL_PeepEvents(events, maxcount, SDL_GETEVENT, mask)) > 0) {
 		for (i = 0; i < count; i++) {
 			event = &events[i];
 			if (state->joy) {
@@ -397,35 +380,43 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 						SDL_PushEvent(event);
 						break;
 					default:
+#ifdef SDL_REDRAW_EVT
+						state->rdraw |= (one_kc != NULL &&
+							event->type == SDL_VIDEORESIZE);
+#endif
 						if (ext_event_handler != NULL)
 							ext_event_handler(event);
 						break;
 				}
-#ifdef SDL_REDRAW_EVT
-				if (ret != -2 && event->type == SDL_VIDEORESIZE) {
-					if (one_kc != NULL)
-						*one_kc = SDLK_UNKNOWN;
-					if (one_down != NULL)
-						*one_down = 1;
-					state->rdraw = 1;
-					is_emukey = 1, ret = 1;
-				} else
-					continue;
-#endif
+				continue;
 			}
 
 			retval |= ret;
 			if ((is_emukey || one_kc != NULL) && retval)
 			{
-				// don't lose events other devices might want to handle
-				if (++i < count)
-					SDL_PeepEvents(events+i, count-i, SDL_ADDEVENT, mask);
-				goto out;
+				break;
 			}
 		}
 	}
 
-out:
+#ifdef SDL_REDRAW_EVT
+	// if the event queue has been emptied and resize events were in it
+	if (state->rdraw && count == 0) {
+		state->rdraw = 0;
+		// dummy key event to force returning from the key loop,
+		// so the application has a chance to redraw the window
+		if (one_kc != NULL) {
+			*one_kc = SDLK_UNKNOWN;
+			retval |= 1;
+		}
+		if (one_down != NULL)
+			*one_down = 1;
+	} else
+		i++;
+#endif
+	// don't lose events other devices might want to handle
+	if (i < count)
+		SDL_PeepEvents(events+i, count-i, SDL_ADDEVENT, mask);
 	return retval;
 }
 
