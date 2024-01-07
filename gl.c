@@ -18,6 +18,7 @@ void *gl_es_surface;
 
 static int tex_w, tex_h;
 static void *tex_mem;
+static int flip_old_w, flip_old_h;
 
 static int gl_have_error(const char *name)
 {
@@ -56,8 +57,11 @@ int gl_init(void *display, void *window, int *quirks, int w, int h)
 		goto out;
 	}
 
-	for (tex_w = 1; tex_w < w; tex_w *= 2);
-	for (tex_h = 1; tex_h < h; tex_h *= 2);
+	flip_old_w = flip_old_h = 0;
+	for (tex_w = 1; tex_w < w; tex_w *= 2)
+		;
+	for (tex_h = 1; tex_h < h; tex_h *= 2)
+		;
 	tex_mem = realloc(tex_mem, tex_w * tex_h * 2);
 	if (tex_mem == NULL) {
 		fprintf(stderr, "OOM\n");
@@ -159,18 +163,16 @@ static float texture[] = {
 
 int gl_flip(const void *fb, int w, int h)
 {
-	static int old_w, old_h;
-
 	if (fb != NULL) {
-		if (w != old_w || h != old_h) {
+		if (w != flip_old_w || h != flip_old_h) {
 			float f_w = (float)w / tex_w;
 			float f_h = (float)h / tex_h;
 			texture[1*2 + 0] = f_w;
 			texture[2*2 + 1] = f_h;
 			texture[3*2 + 0] = f_w;
 			texture[3*2 + 1] = f_h;
-			old_w = w;
-			old_h = h;
+			flip_old_w = w;
+			flip_old_h = h;
 		}
 
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h,
