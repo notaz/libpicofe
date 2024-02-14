@@ -77,9 +77,9 @@ static void text_out16_(int x, int y, const char *text, int color)
 {
 	int i, lh, tr, tg, tb, len;
 	unsigned short *dest = (unsigned short *)g_menuscreen_ptr + x + y * g_menuscreen_pp;
-	tr = (color & 0xf800) >> 8;
-	tg = (color & 0x07e0) >> 3;
-	tb = (color & 0x001f) << 3;
+	tr = PXGETR(color);
+	tg = PXGETG(color);
+	tb = PXGETB(color);
 
 	if (text == (void *)1)
 	{
@@ -111,21 +111,21 @@ static void text_out16_(int x, int y, const char *text, int color)
 			{
 				int c, r, g, b;
 				c = *src >> 4;
-				r = (*dst & 0xf800) >> 8;
-				g = (*dst & 0x07e0) >> 3;
-				b = (*dst & 0x001f) << 3;
+				r = PXGETR(*dst);
+				g = PXGETG(*dst);
+				b = PXGETB(*dst);
 				r = (c^0xf)*r/15 + c*tr/15;
 				g = (c^0xf)*g/15 + c*tg/15;
 				b = (c^0xf)*b/15 + c*tb/15;
-				*dst++ = ((r<<8)&0xf800) | ((g<<3)&0x07e0) | (b>>3);
+				*dst++ = PXMAKE(r, g, b);
 				c = *src & 0xf;
-				r = (*dst & 0xf800) >> 8;
-				g = (*dst & 0x07e0) >> 3;
-				b = (*dst & 0x001f) << 3;
+				r = PXGETR(*dst);
+				g = PXGETG(*dst);
+				b = PXGETB(*dst);
 				r = (c^0xf)*r/15 + c*tr/15;
 				g = (c^0xf)*g/15 + c*tg/15;
 				b = (c^0xf)*b/15 + c*tb/15;
-				*dst++ = ((r<<8)&0xf800) | ((g<<3)&0x07e0) | (b>>3);
+				*dst++ = PXMAKE(r, g, b);
 			}
 		}
 		dest += me_mfont_w;
@@ -241,11 +241,7 @@ static int parse_hex_color(char *buff)
 	char *endp = buff;
 	int t = (int) strtoul(buff, &endp, 16);
 	if (endp != buff)
-#ifdef PSP
-		return ((t<<8)&0xf800) | ((t>>5)&0x07e0) | ((t>>19)&0x1f);
-#else
-		return ((t>>8)&0xf800) | ((t>>5)&0x07e0) | ((t>>3)&0x1f);
-#endif
+		return PXMAKE((t>>16)&0xff, (t>>8)&0xff,t&0xff);
 	return -1;
 }
 
@@ -367,7 +363,7 @@ static void menu_darken_bg(void *dst, void *src, int pixels, int darker)
 		while (pixels--)
 		{
 			unsigned int p = *sorc++;
-			*dest++ = ((p&0xf79ef79e)>>1) - ((p&0xc618c618)>>3);
+			*dest++ = (PXMASKH(p,1)>>1) - (PXMASKH(p,3)>>3);
 		}
 	}
 	else
@@ -375,7 +371,7 @@ static void menu_darken_bg(void *dst, void *src, int pixels, int darker)
 		while (pixels--)
 		{
 			unsigned int p = *sorc++;
-			*dest++ = (p&0xf79ef79e)>>1;
+			*dest++ = (PXMASKH(p,1)>>1);
 		}
 	}
 }
@@ -400,7 +396,7 @@ static void menu_darken_text_bg(void)
 		ymax = g_menuscreen_h - 1;
 
 	for (x = xmin; x <= xmax; x++)
-		screen[y * g_menuscreen_pp + x] = 0xa514;
+		screen[y * g_menuscreen_pp + x] = PXMAKE(0xa0, 0xa0, 0xa0);
 	for (y++; y < ymax; y++)
 	{
 		ls = y * g_menuscreen_pp;
@@ -409,7 +405,7 @@ static void menu_darken_text_bg(void)
 		{
 			unsigned int p = screen[ls + x];
 			if (p != menu_text_color)
-				screen[ls + x] = ((p&0xf79e)>>1) - ((p&0xc618)>>3);
+				screen[ls + x] = (PXMASKH(p,1)>>1) - (PXMASKH(p,3)>>3);
 		}
 		screen[ls + xmax] = 0xffff;
 	}
@@ -664,7 +660,7 @@ static void me_draw(const menu_entry *entries, int sel, void (*draw_more)(void))
 			tmp = strchr(tmp + 1, '\n');
 		if (h >= l * me_sfont_h + 4)
 			for (tmp = ent_sel->help; l > 0; l--, tmp = strchr(tmp, '\n') + 1)
-				smalltext_out16(5, g_menuscreen_h - (l * me_sfont_h + 4), tmp, 0xffff);
+				smalltext_out16(5, g_menuscreen_h - (l * me_sfont_h + 4), tmp, PXMAKE(0xff, 0xff, 0xff));
 	}
 
 	menu_separation();
@@ -845,7 +841,7 @@ static void do_delete(const char *fpath, const char *fname)
 
 	mid = g_menuscreen_w / 2;
 	text_out16(mid - me_mfont_w * 15 / 2,  8 * me_mfont_h, "About to delete");
-	smalltext_out16(mid - len * me_sfont_w / 2, 9 * me_mfont_h + 5, fname, 0xbdff);
+	smalltext_out16(mid - len * me_sfont_w / 2, 9 * me_mfont_h + 5, fname, PXMAKE(0xbf, 0xbf, 0xff));
 	text_out16(mid - me_mfont_w * 13 / 2, 11 * me_mfont_h, "Are you sure?");
 
 	nm = in_get_key_name(-1, -PBTN_MA3);
@@ -886,20 +882,20 @@ static void draw_dirlist(char *curdir, struct dirent **namelist,
 
 	x = 5 + me_mfont_w + 1;
 	if (start - 2 >= 0)
-		smalltext_out16(14, (start - 2) * me_sfont_h, curdir, 0xffff);
+		smalltext_out16(14, (start - 2) * me_sfont_h, curdir, PXMAKE(0xff, 0xff, 0xff));
 	for (i = 0; i < n; i++) {
 		pos = start + i;
 		if (pos < 0)  continue;
 		if (pos >= max_cnt) break;
 		if (namelist[i]->d_type == DT_DIR) {
-			smalltext_out16(x, pos * me_sfont_h, "/", 0xfff6);
-			smalltext_out16(x + me_sfont_w, pos * me_sfont_h, namelist[i]->d_name, 0xfff6);
+			smalltext_out16(x, pos * me_sfont_h, "/", PXMAKE(0xff, 0xff, 0xb0));
+			smalltext_out16(x + me_sfont_w, pos * me_sfont_h, namelist[i]->d_name, PXMAKE(0xff, 0xff, 0xb0));
 		} else {
 			unsigned short color = fname2color(namelist[i]->d_name);
 			smalltext_out16(x, pos * me_sfont_h, namelist[i]->d_name, color);
 		}
 	}
-	smalltext_out16(5, max_cnt/2 * me_sfont_h, ">", 0xffff);
+	smalltext_out16(5, max_cnt/2 * me_sfont_h, ">", PXMAKE(0xff, 0xff, 0xff));
 
 	if (show_help) {
 		darken_ptr = (short *)g_menuscreen_ptr
@@ -909,17 +905,17 @@ static void draw_dirlist(char *curdir, struct dirent **namelist,
 
 		snprintf(buff, sizeof(buff), "%s - select, %s - back",
 			in_get_key_name(-1, -PBTN_MOK), in_get_key_name(-1, -PBTN_MBACK));
-		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 3 - 2, buff, 0xe78c);
+		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 3 - 2, buff, PXMAKE(0xe0, 0xf0, 0x60));
 
 		snprintf(buff, sizeof(buff), g_menu_filter_off ?
 			 "%s - hide unknown files" : "%s - show all files",
 			in_get_key_name(-1, -PBTN_MA3));
-		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 2 - 2, buff, 0xe78c);
+		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 2 - 2, buff, PXMAKE(0xe0, 0xf0, 0x60));
 
 		snprintf(buff, sizeof(buff), g_autostateld_opt ?
 			 "%s - autoload save is ON" : "%s - autoload save is OFF",
 			in_get_key_name(-1, -PBTN_MA2));
-		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 1 - 2, buff, 0xe78c);
+		smalltext_out16(x, g_menuscreen_h - me_sfont_h * 1 - 2, buff, PXMAKE(0xe0, 0xf0, 0x60));
 	}
 
 	menu_draw_end();

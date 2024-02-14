@@ -7,6 +7,30 @@
 extern "C" {
 #endif
 
+// platform dependend color handling
+#if defined(USE_BGR555)
+#define PXMAKE(r,g,b) ((((b)<<7) & 0x7c00)|(((g)<<2) & 0x03e0)|((r)>>3))
+#define PXMASKL(t,c) ((t) &  (((1<<(c))-1)*0x04210421))
+#define PXMASKH(t,c) ((t) & ~(((1<<(c))-1)*0x04210421) & 0x7fff)
+#define PXGETR(t)    (((t) & 0x001f)<<3)
+#define PXGETG(t)    (((t) & 0x03e0)>>2)
+#define PXGETB(t)    (((t) & 0x7c00)>>7)
+#elif defined(USE_BGR565)
+#define PXMAKE(r,g,b) ((((b)<<8) & 0xf800)|(((g)<<3) & 0x07e0)|((r)>>3))
+#define PXMASKL(t,c) ((t) &  (((1<<(c))-1)*0x08210821))
+#define PXMASKH(t,c) ((t) & ~(((1<<(c))-1)*0x08210821))
+#define PXGETR(t)    (((t) & 0x001f)<<3)
+#define PXGETG(t)    (((t) & 0x07e0)>>3)
+#define PXGETB(t)    (((t) & 0xf800)>>8)
+#else // RGB565
+#define PXMAKE(r,g,b) ((((r)<<8) & 0xf800)|(((g)<<3) & 0x07e0)|((b)>>3))
+#define PXMASKL(t,c) ((t) &  (((1<<(c))-1)*0x08210821))
+#define PXMASKH(t,c) ((t) & ~(((1<<(c))-1)*0x08210821))
+#define PXGETR(t)    (((t) & 0xf800)>>8)
+#define PXGETG(t)    (((t) & 0x07e0)>>3)
+#define PXGETB(t)    (((t) & 0x001f)<<3)
+#endif
+
 /* target device, everything is optional */
 struct plat_target {
 	int (*cpu_clock_get)(void);

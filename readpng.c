@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <png.h>
+#include "plat.h"
 #include "readpng.h"
 #include "lprintf.h"
 
@@ -95,11 +96,7 @@ int readpng(void *dest, const char *fname, readpng_what what, int req_w, int req
 				int len = width;
 				while (len--)
 				{
-#ifdef PSP
-					*dst++ = ((src[2]&0xf8)<<8) | ((src[1]&0xf8)<<3) | (src[0] >> 3); // BGR
-#else
-					*dst++ = ((src[0]&0xf8)<<8) | ((src[1]&0xf8)<<3) | (src[2] >> 3); // RGB
-#endif
+					*dst++ = PXMAKE(src[0], src[1], src[2]);
 					src += 3;
 				}
 				dst += req_w - width;
@@ -224,9 +221,9 @@ int writepng(const char *fname, unsigned short *src, int w, int h)
 			goto end2;
 		row_pointers[i] = dst;
 		for (j = 0; j < w; j++, src++, dst += 3) {
-			dst[0] = (*src & 0xf800) >> 8;
-			dst[1] = (*src & 0x07e0) >> 3;
-			dst[2] = (*src & 0x001f) << 3;
+			dst[0] = PXGETR(*src);
+			dst[1] = PXGETG(*src);
+			dst[2] = PXGETB(*src);
 		}
 	}
 
