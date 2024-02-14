@@ -475,7 +475,7 @@ static int me_id2offset(const menu_entry *ent, menu_id id)
 static void me_enable(menu_entry *entries, menu_id id, int enable)
 {
 	int i = me_id2offset(entries, id);
-	entries[i].enabled = enable;
+	entries[i].enabled = !!enable;
 }
 
 static int me_count(const menu_entry *ent)
@@ -1075,6 +1075,16 @@ rescan:
 
 	if (n > 1)
 		qsort(namelist, n, sizeof(namelist[0]), scandir_cmp);
+
+	// add ".." if it's somehow not there
+	if (n == 0 || strcmp(namelist[0]->d_name, "..")) {
+		struct dirent *dotdot = malloc(sizeof(*dotdot));
+		*dotdot = (struct dirent) { .d_name="..", .d_type=DT_DIR };
+		namelist = realloc(namelist, (n+1)*sizeof(*namelist));
+		memmove(namelist+1, namelist, n*sizeof(*namelist));
+		namelist[0] = dotdot;
+		n++;
+	}
 
 	// try to find selected file
 	sel = 0;
