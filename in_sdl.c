@@ -412,8 +412,8 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 		if (one_down != NULL)
 			*one_down = 1;
 	} else
-		i++;
 #endif
+		i++;
 	// don't lose events other devices might want to handle
 	if (i < count)
 		SDL_PeepEvents(events+i, count-i, SDL_ADDEVENT, mask);
