@@ -46,6 +46,8 @@ struct plat_target {
 	int vout_fullscreen;
 	const char **hwfilters;
 	int hwfilter;
+	const int *sound_rates;
+	int sound_rate;
 };
 
 extern struct plat_target plat_target;

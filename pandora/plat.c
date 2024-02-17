@@ -239,6 +239,7 @@ static int switch_layer(int which, int enable)
 	return ret;
 }
 
+static int sound_rates[] = { 8000, 11025, 16000, 22050, 32000, 44100, 53000, -1 };
 struct plat_target plat_target = {
 	cpu_clock_get,
 	cpu_clock_set,
@@ -247,6 +248,7 @@ struct plat_target plat_target = {
 	lcdrate_set,
 	gamma_set,
 	.switch_layer = switch_layer,
+	.sound_rates = sound_rates,
 };
 
 int plat_target_init(void)

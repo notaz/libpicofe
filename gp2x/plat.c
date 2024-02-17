@@ -45,7 +45,8 @@ static const char * const caanoo_keys[KEY_MAX + 1] = {
 };
 
 /* to be filled by mmsp2/pollux _init */
-struct plat_target plat_target;
+static int sound_rates[] = { 8000, 11025, 16000, 22050, 32000, 44100, 53000, -1 };
+struct plat_target plat_target = { .sound_rates = sound_rates };
 
 int plat_target_init(void)
 {
