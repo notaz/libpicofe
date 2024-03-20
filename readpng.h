@@ -7,6 +7,7 @@ typedef enum
 	READPNG_FONT,
 	READPNG_SELECTOR,
 	READPNG_24,
+	READPNG_SCALE,
 }
 readpng_what;
 

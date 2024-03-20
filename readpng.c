@@ -67,6 +67,43 @@ int readpng(void *dest, const char *fname, readpng_what what, int req_w, int req
 
 	switch (what)
 	{
+		case READPNG_SCALE:
+		{
+			int height, width, x_ofs = 0, y_ofs = 0;
+			unsigned short *dst = dest;
+			int x_scale, y_scale, x_pos, y_pos; // Q16
+
+			if (png_get_bit_depth(png_ptr, info_ptr) != 8)
+			{
+				lprintf(__FILE__ ": scaled image uses %ibpc, needed 8bpc\n", png_get_bit_depth(png_ptr, info_ptr));
+				break;
+			}
+			width = png_get_image_width(png_ptr, info_ptr);
+			x_scale = width*65536 / req_w;
+			height = png_get_image_height(png_ptr, info_ptr);
+			y_scale = height*65536 / req_h;
+			if (x_scale < y_scale)
+				x_scale = y_scale;
+			else	y_scale = x_scale;
+			x_ofs = req_w - width*65536 / x_scale;
+			y_ofs = req_h - height*65536 / y_scale;
+
+			dst += y_ofs/2*req_w + x_ofs/2;
+			for (y_pos = 0; y_pos < height*65536; y_pos += y_scale+1)
+			{
+				unsigned char *src = row_ptr[y_pos >> 16];
+				int len = 0;
+				for (x_pos = 0; x_pos < width*65536; x_pos += x_scale+1, len++)
+				{
+					int o = 3*(x_pos >> 16);
+					// TODO: could use bilinear if upsampling?
+					*dst++ = PXMAKE(src[o], src[o+1], src[o+2]);
+				}
+				dst += req_w - len;
+			}
+			break;
+		}
+
 		case READPNG_BG:
 		{
 			int height, width, h, x_ofs = 0, y_ofs = 0;
