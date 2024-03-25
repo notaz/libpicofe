@@ -76,7 +76,7 @@ int readpng(void *dest, const char *fname, readpng_what what, int req_w, int req
 			if (png_get_bit_depth(png_ptr, info_ptr) != 8)
 			{
 				lprintf(__FILE__ ": scaled image uses %ibpc, needed 8bpc\n", png_get_bit_depth(png_ptr, info_ptr));
-				break;
+				goto done;
 			}
 			width = png_get_image_width(png_ptr, info_ptr);
 			x_scale = width*65536 / req_w;
@@ -112,7 +112,7 @@ int readpng(void *dest, const char *fname, readpng_what what, int req_w, int req
 			if (png_get_bit_depth(png_ptr, info_ptr) != 8)
 			{
 				lprintf(__FILE__ ": bg image uses %ibpc, needed 8bpc\n", png_get_bit_depth(png_ptr, info_ptr));
-				break;
+				goto done;
 			}
 			width = png_get_image_width(png_ptr, info_ptr);
 			if (width > req_w) {
@@ -149,12 +149,12 @@ int readpng(void *dest, const char *fname, readpng_what what, int req_w, int req
 			{
 				lprintf(__FILE__ ": unexpected font image size %dx%d, needed %dx%d\n",
 					(int)png_get_image_width(png_ptr, info_ptr), (int)png_get_image_height(png_ptr, info_ptr), req_w, req_h);
-				break;
+				goto done;
 			}
 			if (png_get_bit_depth(png_ptr, info_ptr) != 8)
 			{
 				lprintf(__FILE__ ": font image uses %ibpp, needed 8bpp\n", png_get_bit_depth(png_ptr, info_ptr));
-				break;
+				goto done;
 			}
 			for (y = 0; y < 16; y++)
 			{
@@ -182,12 +182,12 @@ int readpng(void *dest, const char *fname, readpng_what what, int req_w, int req
 			{
 				lprintf(__FILE__ ": unexpected selector image size %ix%i, needed %dx%d\n",
 					(int)png_get_image_width(png_ptr, info_ptr), (int)png_get_image_height(png_ptr, info_ptr), req_w, req_h);
-				break;
+				goto done;
 			}
 			if (png_get_bit_depth(png_ptr, info_ptr) != 8)
 			{
 				lprintf(__FILE__ ": selector image uses %ibpp, needed 8bpp\n", png_get_bit_depth(png_ptr, info_ptr));
-				break;
+				goto done;
 			}
 			for (y1 = 0; y1 < req_h; y1++)
 			{
@@ -205,7 +205,7 @@ int readpng(void *dest, const char *fname, readpng_what what, int req_w, int req
 			if (png_get_bit_depth(png_ptr, info_ptr) != 8)
 			{
 				lprintf(__FILE__ ": image uses %ibpc, needed 8bpc\n", png_get_bit_depth(png_ptr, info_ptr));
-				break;
+				goto done;
 			}
 			width = png_get_image_width(png_ptr, info_ptr);
 			if (width > req_w)
