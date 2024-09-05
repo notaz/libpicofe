@@ -14,7 +14,10 @@
 #define mkdir(pathname,mode) mkdir(pathname)
 #define d_type d_ino
 #define DT_REG 0
-#define DT_DIR 0
+#define DT_DIR 1
+#define DT_LNK 2
+#define DT_UNKNOWN -1
+#define readlink(p,d,s)		-1
 #endif
 
 #else

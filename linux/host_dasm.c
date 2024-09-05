@@ -24,17 +24,17 @@ static struct disassemble_info di;
 static disassembler_ftype print_insn_func;
 
 #if defined __arm__
-#define print_insn_func print_insn_little_arm
+//#define print_insn_func print_insn_little_arm
 #define BFD_ARCH bfd_arch_arm
 #define BFD_MACH bfd_mach_arm_unknown
 #define DASM_OPTS "reg-names-std"
 #elif defined __aarch64__
-#define print_insn_func print_insn_aarch64
+//#define print_insn_func print_insn_aarch64
 #define BFD_ARCH bfd_arch_aarch64
 #define BFD_MACH bfd_mach_aarch64
 #define DASM_OPTS NULL
 #elif defined __mips__
-#define print_insn_func print_insn_little_mips
+//#define print_insn_func print_insn_little_mips
 #define BFD_ARCH bfd_arch_mips
 #define BFD_MACH bfd_mach_mipsisa64r2
 #define DASM_OPTS NULL
@@ -44,12 +44,12 @@ static disassembler_ftype print_insn_func;
 #define BFD_MACH bfd_mach_riscv64
 #define DASM_OPTS NULL
 #elif defined __powerpc__
-#define print_insn_func print_insn_little_powerpc
+//#define print_insn_func print_insn_little_powerpc
 #define BFD_ARCH bfd_arch_powerpc
 #define BFD_MACH bfd_mach_ppc64
 #define DASM_OPTS NULL
 #elif defined(__x86_64__) || defined(__i386__)
-#define print_insn_func print_insn_i386_intel
+//#define print_insn_func print_insn_i386_intel
 #define BFD_ARCH bfd_arch_i386
 #ifdef __x86_64__
 #define BFD_MACH bfd_mach_x86_64_intel_syntax
@@ -205,13 +205,31 @@ static int print_insn_hex(bfd_vma addr, struct disassemble_info *info)
   return 4;
 }
 
+#ifdef BFD_COMPRESS_ZSTD
+static int insn_printf_styled(void *f, enum disassembler_style style, const char* format, ...)
+{
+  va_list args;
+  size_t n;
+
+  va_start(args, format);
+  n = vprintf(format, args);
+  va_end(args);
+
+  return n;
+}
+#endif
+
 static void host_dasm_init(void)
 {
   bfd_init();
   if (g_argv && g_argv[0])
     slurp_symtab(g_argv[0]);
 
+#ifdef BFD_COMPRESS_ZSTD
+  init_disassemble_info(&di, NULL, insn_printf, insn_printf_styled);
+#else
   init_disassemble_info(&di, NULL, insn_printf);
+#endif
   di.flavour = bfd_target_unknown_flavour;
   di.memory_error_func = dis_asm_memory_error; 
   di.print_address_func = dis_asm_print_address;

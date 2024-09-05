@@ -10,6 +10,7 @@
  */
 
 #include <stdio.h>
+#include <stdint.h>
 #include <SDL.h>
 #include <SDL_syswm.h>
 
@@ -107,7 +108,7 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     int W = plat_target.vout_method == vout_mode_overlay2x && w < 640 ? 2*w : w;
     plat_sdl_overlay = SDL_CreateYUVOverlay(W, h, SDL_UYVY_OVERLAY, plat_sdl_screen);
     if (plat_sdl_overlay != NULL && SDL_LockYUVOverlay(plat_sdl_overlay) == 0) {
-      if ((long)plat_sdl_overlay->pixels[0] & 3)
+      if ((uintptr_t)plat_sdl_overlay->pixels[0] & 3)
         fprintf(stderr, "warning: overlay pointer is unaligned\n");
 
       plat_sdl_overlay_clear();

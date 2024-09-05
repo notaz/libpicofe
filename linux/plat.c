@@ -17,11 +17,14 @@
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/mman.h>
 #include <errno.h>
 #include <sys/stat.h>
+#ifndef __MINGW32__
+#include <sys/mman.h>
+#endif
 
 #include "../plat.h"
+#include "../posix.h"
 
 /* XXX: maybe unhardcode pagesize? */
 #define HUGETLB_PAGESIZE (2 * 1024 * 1024)

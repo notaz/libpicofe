@@ -1161,7 +1161,7 @@ rescan:
 				} else {
 					strcpy(newdir, curr_path);
 					p = newdir + strlen(newdir) - 1;
-					while (*p == '/' && p >= newdir) *p-- = 0;
+					while (p >= newdir && *p == '/') *p-- = 0;
 					strcat(newdir, "/");
 					strcat(newdir, namelist[sel]->d_name);
 				}
