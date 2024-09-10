@@ -357,8 +357,13 @@ int in_update_keycode(int *dev_id_out, int *is_down_out, char *charcode, int tim
 
 	if (in_have_async_devs) {
 		result = in_update_kc_async(&dev_id, &is_down, timeout_ms);
-		if (result == -1)
+		if (result == -1) {
+#ifdef SDL_REDRAW_EVT
+			// no key up event for RDRAW, clear to avoid key repeat
+			menu_key_state &= ~PBTN_RDRAW;
+#endif
 			return -1;
+		}
 		drv = &DRV(in_devices[dev_id].drv_id);
 		goto finish;
 	}
