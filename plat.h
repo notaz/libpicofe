@@ -119,6 +119,7 @@ static __inline int plat_target_switch_layer(int which, int enable)
 }
 
 /* menu: enter (switch bpp, etc), begin/end drawing */
+void plat_video_menu_update(void);
 void plat_video_menu_enter(int is_rom_loaded);
 void plat_video_menu_begin(void);
 void plat_video_menu_end(void);

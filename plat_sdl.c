@@ -145,7 +145,8 @@ int plat_sdl_change_video_mode(int w, int h, int force)
       flags |= SDL_FULLSCREEN;
       win_w = fs_w;
       win_h = fs_h;
-    }
+    } else if (window_b)
+      flags |= SDL_RESIZABLE;
 
     SDL_PumpEvents();
 
@@ -174,12 +175,12 @@ void plat_sdl_event_handler(void *event_)
   switch (event->type) {
   case SDL_VIDEORESIZE:
     //printf("resize %dx%d\n", event->resize.w, event->resize.h);
-    if (plat_target.vout_method != 0
-        && !plat_target.vout_fullscreen && !old_fullscreen)
+    if ((plat_target.vout_method != 0 || window_b) &&
+        !plat_target.vout_fullscreen && !old_fullscreen)
     {
       window_w = event->resize.w & ~3;
       window_h = event->resize.h & ~3;
-      plat_sdl_change_video_mode(0, 0, 1);
+      plat_sdl_change_video_mode(window_w, window_h, 1);
     }
     break;
   case SDL_ACTIVEEVENT:
@@ -378,4 +379,8 @@ void plat_sdl_overlay_clear(void)
     *dst = v;
 }
 
+int plat_sdl_is_windowed(void)
+{
+  return window_b != 0;
+}
 // vim:shiftwidth=2:expandtab

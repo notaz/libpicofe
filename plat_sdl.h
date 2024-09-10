@@ -7,6 +7,7 @@ extern void (*plat_sdl_resize_cb)(int w, int h);
 extern void (*plat_sdl_quit_cb)(void);
 
 int plat_sdl_init(void);
+int plat_sdl_is_windowed(void);
 int plat_sdl_change_video_mode(int w, int h, int force);
 void plat_sdl_overlay_clear(void);
 void plat_sdl_event_handler(void *event_);
