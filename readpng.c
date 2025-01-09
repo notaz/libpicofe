@@ -234,7 +234,7 @@ done:
 	return ret;
 }
 
-int writepng(const char *fname, unsigned short *src, int w, int h)
+int writepngpp(const char *fname, unsigned short *src, int w, int h, int pitch)
 {
 	png_structp png_ptr = NULL;
 	png_infop info_ptr = NULL;
@@ -262,6 +262,7 @@ int writepng(const char *fname, unsigned short *src, int w, int h)
 			dst[1] = PXGETG(*src);
 			dst[2] = PXGETB(*src);
 		}
+		src += pitch-w;
 	}
 
 	/* initialize stuff */
@@ -307,3 +308,7 @@ end1:
 	return ret;
 }
 
+int writepng(const char *fname, unsigned short *src, int w, int h)
+{
+	return writepngpp(fname, src, w, h, w);
+}
