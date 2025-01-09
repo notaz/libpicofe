@@ -141,17 +141,21 @@ int  in_menu_wait_any(char *charcode, int timeout_ms);
 int  in_menu_wait(int interesting, char *charcode, int autorep_delay_ms);
 int  in_config_parse_dev(const char *dev_name);
 int  in_config_bind_key(int dev_id, const char *key, int binds, int bind_type);
+int  in_config_bind_ps2_key(int dev_id, const char *key, int ps2_key);
 int  in_get_config(int dev_id, int what, void *val);
 int  in_set_config(int dev_id, int what, const void *val, int size);
 int  in_get_key_code(int dev_id, const char *key_name);
 int  in_name_to_id(const char *dev_name);
 int  in_bind_key(int dev_id, int keycode, int mask, int bind_type, int force_unbind);
+int  in_bind_ps2_key(int dev_id, int keycode, int ps2_key);
 void in_unbind_all(int dev_id, int act_mask, int bind_type);
 void in_clean_binds(void);
 void in_debug_dump(void);
 
 const int  *in_get_dev_binds(int dev_id);
+const int  *in_get_dev_ps2_binds(int dev_id);
 const int  *in_get_dev_def_binds(int dev_id);
+const int  *in_get_dev_ps2_def_binds(int dev_id);
 const char *in_get_dev_name(int dev_id, int must_be_active, int skip_pfix);
 const char *in_get_key_name(int dev_id, int keycode);
 

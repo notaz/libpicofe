@@ -542,6 +542,13 @@ const int *in_get_dev_binds(int dev_id)
 	return dev ? dev->binds : NULL;
 }
 
+const int *in_get_dev_ps2_binds(int dev_id)
+{
+	in_dev_t *dev = get_dev(dev_id);
+
+	return dev ? dev->pico_ps2_binds : NULL;
+}
+
 const int *in_get_dev_def_binds(int dev_id)
 {
 	in_dev_t *dev = get_dev(dev_id);
@@ -551,6 +558,17 @@ const int *in_get_dev_def_binds(int dev_id)
 		return NULL;
 
 	return dev->binds + dev->key_count * IN_BINDTYPE_COUNT;
+}
+
+const int *in_get_dev_ps2_def_binds(int dev_id)
+{
+	in_dev_t *dev = get_dev(dev_id);
+	if (dev == NULL)
+		return NULL;
+	if (dev->binds == NULL)
+		return NULL;
+
+	return dev->pico_ps2_binds;
 }
 
 int in_get_config(int dev_id, int what, void *val)
@@ -785,6 +803,30 @@ int in_bind_key(int dev_id, int keycode, int mask, int bind_type, int force_unbi
 	return 0;
 }
 
+int in_bind_ps2_key(int dev_id, int keycode, int ps2_key)
+{
+	int count;
+	in_dev_t *dev;
+
+	dev = get_dev(dev_id);
+	if (dev == NULL)
+		return -1;
+
+	count = dev->key_count;
+
+	if (dev->pico_ps2_binds == NULL) {
+		dev->pico_ps2_binds = in_alloc_pico_ps2_binds(dev->drv_id, count);
+		if (dev->pico_ps2_binds == NULL)
+			return -1;
+	}
+
+	if (keycode < 0 || keycode >= count)
+		return -1;
+
+	dev->pico_ps2_binds[keycode] = ps2_key;
+	return 0;
+}
+
 /*
  * Unbind act_mask on binds with type bind_type
  * - if dev_id_ < 0, affects all devices
@@ -874,14 +916,9 @@ int in_config_parse_dev(const char *name)
 	return i;
 }
 
-int in_config_bind_key(int dev_id, const char *key, int acts, int bind_type)
+static int parse_key(in_dev_t *dev, const char *key)
 {
-	in_dev_t *dev;
-	int i, offs, kc;
-
-	dev = get_dev(dev_id);
-	if (dev == NULL || bind_type >= IN_BINDTYPE_COUNT)
-		return -1;
+	int kc, i;
 
 	/* maybe a raw code? */
 	if (key[0] == '\\' && key[1] == 'x') {
@@ -917,6 +954,20 @@ int in_config_bind_key(int dev_id, const char *key, int acts, int bind_type)
 		}
 	}
 
+	return kc;
+}
+
+int in_config_bind_key(int dev_id, const char *key, int acts, int bind_type)
+{
+	in_dev_t *dev;
+	int i, offs, kc;
+
+	dev = get_dev(dev_id);
+	if (dev == NULL || bind_type >= IN_BINDTYPE_COUNT)
+		return -1;
+
+	kc = parse_key(dev, key);
+
 	if (kc < 0 || kc >= dev->key_count) {
 		lprintf("input: bad key: '%s' for device '%s'\n",
 			key, dev->name);
@@ -933,6 +984,28 @@ int in_config_bind_key(int dev_id, const char *key, int acts, int bind_type)
 	if (dev->binds[offs] == -1)
 		dev->binds[offs] = 0;
 	dev->binds[offs] |= acts;
+	return 0;
+}
+
+int in_config_bind_ps2_key(int dev_id, const char *key, int ps2_key)
+{
+	in_dev_t *dev;
+	int kc;
+
+	dev = get_dev(dev_id);
+	if (dev == NULL)
+		return -1;
+
+	kc = parse_key(dev, key);
+
+	if (kc < 0 || kc >= dev->key_count) {
+		lprintf("input: bad key: '%s' for device '%s'\n",
+			key, dev->name);
+		return -1;
+	}
+
+	dev->pico_ps2_binds[kc] = ps2_key;
+
 	return 0;
 }
 

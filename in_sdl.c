@@ -189,6 +189,7 @@ static void in_sdl_probe(const in_drv_t *drv)
 	state->drv = drv;
 	in_register(IN_SDL_PREFIX "keys", -1, state, SDLK_LAST,
 		key_names, 0);
+	//SDL_EnableUNICODE(1);
 
 	/* joysticks go here too */
 	SDL_InitSubSystem(SDL_INIT_JOYSTICK);
