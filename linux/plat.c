@@ -144,6 +144,7 @@ void plat_sleep_ms(int ms)
 
 int plat_wait_event(int *fds_hnds, int count, int timeout_ms)
 {
+#ifndef __MINGW32__
 	struct timeval tv, *timeout = NULL;
 	int i, ret, fdmax = -1;
 	fd_set fdset;
@@ -175,7 +176,9 @@ int plat_wait_event(int *fds_hnds, int count, int timeout_ms)
 	for (i = 0; i < count; i++)
 		if (FD_ISSET(fds_hnds[i], &fdset))
 			ret = fds_hnds[i];
-
+#else
+	int ret = -1;
+#endif
 	return ret;
 }
 
