@@ -446,7 +446,7 @@ static int in_sdl_update(void *drv_data, const int *binds, int *result)
 	return 0;
 }
 
-static int in_sdl_update_pico_ps2(void *drv_data, const int *binds, int *result)
+static int in_sdl_update_kbd(void *drv_data, const int *binds, int *result)
 {
 	struct in_sdl_state *state = drv_data;
 	keybits_t mask;
@@ -560,7 +560,7 @@ static const in_drv_t in_sdl_drv = {
 	.free            = in_sdl_free,
 	.get_key_names   = in_sdl_get_key_names,
 	.update          = in_sdl_update,
-	.update_pico_ps2 = in_sdl_update_pico_ps2,
+	.update_kbd      = in_sdl_update_kbd,
 	.update_keycode  = in_sdl_update_keycode,
 	.menu_translate  = in_sdl_menu_translate,
 	.clean_binds     = in_sdl_clean_binds,
@@ -573,7 +573,7 @@ int in_sdl_init(const struct in_pdata *pdata, void (*handler)(void *event))
 		return -1;
 	}
 
-	in_register_driver(&in_sdl_drv, pdata->defbinds, pdata->pico_ps2_map, pdata);
+	in_register_driver(&in_sdl_drv, pdata->defbinds, pdata->kbd_map, pdata);
 	ext_event_handler = handler;
 	return 0;
 }

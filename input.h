@@ -66,7 +66,7 @@ enum {
 	IN_BINDTYPE_EMU = 0,
 	IN_BINDTYPE_PLAYER12,
 	IN_BINDTYPE_PLAYER34,
-	IN_BINDTYPE_PICO_PS2,
+	IN_BINDTYPE_KEYBOARD,
 	IN_BINDTYPE_COUNT,
 };
 
@@ -87,7 +87,7 @@ struct InputDriver {
 	int  (*get_config)(void *drv_data, int what, int *val);
 	int  (*set_config)(void *drv_data, int what, int val);
 	int  (*update)(void *drv_data, const int *binds, int *result);
-	int  (*update_pico_ps2)(void *drv_data, const int *binds, int *result);
+	int  (*update_kbd)(void *drv_data, const int *binds, int *result);
 	int  (*update_analog)(void *drv_data, int axis_id, int *result);
 	/* return -1 on no event, -2 on error */
 	int  (*update_keycode)(void *drv_data, int *is_down);
@@ -96,7 +96,7 @@ struct InputDriver {
 	const char * (*get_key_name)(int keycode);
 
 	const struct in_default_bind *defbinds;
-	const struct in_default_bind *pico_ps2_binds;
+	const struct in_default_bind *kbd_binds;
 	const void *pdata;
 };
 
@@ -118,13 +118,13 @@ struct in_pdata {
 	const struct menu_keymap *joy_map;
 	size_t jmap_size;
 	const char * const *key_names;
-	const struct in_default_bind *pico_ps2_map;
+	const struct in_default_bind *kbd_map;
 };
 
 /* to be called by drivers */
 int in_register_driver(const in_drv_t *drv,
 			const struct in_default_bind *defbinds, 
-			const struct in_default_bind *pico_ps2_map, 
+			const struct in_default_bind *kbd_map, 
 			const void *pdata);
 void in_register(const char *nname, int drv_fd_hnd, void *drv_data,
 		int key_count, const char * const *key_names, int combos);
@@ -136,26 +136,26 @@ void in_probe(void);
 int  in_update(int *result);
 int  in_update_analog(int dev_id, int axis_id, int *value);
 int  in_update_keycode(int *dev_id, int *is_down, char *charcode, int timeout_ms);
-int  in_update_pico_ps2(int *result);
+int  in_update_kbd(int *result);
 int  in_menu_wait_any(char *charcode, int timeout_ms);
 int  in_menu_wait(int interesting, char *charcode, int autorep_delay_ms);
 int  in_config_parse_dev(const char *dev_name);
 int  in_config_bind_key(int dev_id, const char *key, int binds, int bind_type);
-int  in_config_bind_ps2_key(int dev_id, const char *key, int ps2_key);
+int  in_config_bind_kbd_key(int dev_id, const char *key, int kbd_key);
 int  in_get_config(int dev_id, int what, void *val);
 int  in_set_config(int dev_id, int what, const void *val, int size);
 int  in_get_key_code(int dev_id, const char *key_name);
 int  in_name_to_id(const char *dev_name);
 int  in_bind_key(int dev_id, int keycode, int mask, int bind_type, int force_unbind);
-int  in_bind_ps2_key(int dev_id, int keycode, int ps2_key);
+int  in_bind_kbd_key(int dev_id, int keycode, int kbd_key);
 void in_unbind_all(int dev_id, int act_mask, int bind_type);
 void in_clean_binds(void);
 void in_debug_dump(void);
 
 const int  *in_get_dev_binds(int dev_id);
-const int  *in_get_dev_ps2_binds(int dev_id);
+const int  *in_get_dev_kbd_binds(int dev_id);
 const int  *in_get_dev_def_binds(int dev_id);
-const int  *in_get_dev_ps2_def_binds(int dev_id);
+const int  *in_get_dev_kbd_def_binds(int dev_id);
 const char *in_get_dev_name(int dev_id, int must_be_active, int skip_pfix);
 const char *in_get_key_name(int dev_id, int keycode);
 

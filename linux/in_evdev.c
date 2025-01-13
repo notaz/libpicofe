@@ -368,7 +368,7 @@ static int in_evdev_update(void *drv_data, const int *binds, int *result)
 	return 0;
 }
 
-static int in_evdev_update_pico_ps2(void *drv_data, const int *binds, int *result)
+static int in_evdev_update_kbd(void *drv_data, const int *binds, int *result)
 {
 	return in_evdev_update(drv_data, binds, result);
 }
@@ -620,7 +620,7 @@ static const in_drv_t in_evdev_drv = {
 	.get_config      = in_evdev_get_config,
 	.set_config      = in_evdev_set_config,
 	.update          = in_evdev_update,
-	.update_pico_ps2 = in_evdev_update_pico_ps2,
+	.update_kbd      = in_evdev_update_kbd,
 	.update_analog   = in_evdev_update_analog,
 	.update_keycode  = in_evdev_update_keycode,
 	.menu_translate  = in_evdev_menu_translate,
