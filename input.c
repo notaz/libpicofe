@@ -823,7 +823,7 @@ int in_bind_kbd_key(int dev_id, int keycode, int kbd_key)
 	if (keycode < 0 || keycode >= count)
 		return -1;
 
-	dev->kbd_binds[keycode] = kbd_key;
+	dev->kbd_binds[keycode] = (kbd_key == -1 ? 0 : kbd_key);
 	return 0;
 }
 
@@ -856,9 +856,11 @@ void in_unbind_all(int dev_id_, int act_mask, int bind_type)
 		if (act_mask != -1) {
 			for (i = 0; i < count; i++)
 				dev->binds[IN_BIND_OFFS(i, bind_type)] &= ~act_mask;
-		}
-		else
+		} else {
 			memset(dev->binds, 0, sizeof(dev->binds[0]) * count * IN_BINDTYPE_COUNT);
+			if (dev->kbd_binds)
+				memset(dev->kbd_binds, 0, sizeof(dev->kbd_binds[0]) * count);
+		}
 	}
 }
 
