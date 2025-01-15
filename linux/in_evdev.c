@@ -633,7 +633,7 @@ int in_evdev_init(const struct in_pdata *pdata)
 		return -1;
 	}
 
-	in_register_driver(&in_evdev_drv, pdata->defbinds, pdata);
+	in_register_driver(&in_evdev_drv, pdata->defbinds, pdata->kbd_map, pdata);
 	return 0;
 }
 

@@ -303,6 +303,6 @@ void in_gp2x_init(const struct in_default_bind *defbinds)
 	
 	in_gp2x_combo_keys = in_gp2x_combo_acts = 0;
 
-	in_register_driver(&in_gp2x_drv, defbinds, NULL);
+	in_register_driver(&in_gp2x_drv, defbinds, NULL, NULL);
 }
 
