@@ -17,11 +17,6 @@
 #include "plat.h"
 #include "lprintf.h"
 
-#ifdef IN_VK
-#error needs update: in_vk_init in_vk_update
-#include "../win32/in_vk.h"
-#endif
-
 typedef struct
 {
 	int drv_id;

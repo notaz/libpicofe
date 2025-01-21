@@ -55,11 +55,11 @@ static int menu_sel_color = -1; // disabled
 
 /* note: these might become non-constant in future */
 #if MENU_X2
-static const int me_mfont_w = 16, me_mfont_h = 20;
-static const int me_sfont_w = 12, me_sfont_h = 20;
+const int me_mfont_w = 16, me_mfont_h = 20;
+const int me_sfont_w = 12, me_sfont_h = 20;
 #else
-static const int me_mfont_w = 8, me_mfont_h = 10;
-static const int me_sfont_w = 6, me_sfont_h = 10;
+const int me_mfont_w = 8, me_mfont_h = 10;
+const int me_sfont_w = 6, me_sfont_h = 10;
 #endif
 
 static int g_menu_filter_off;
@@ -200,7 +200,7 @@ static void smalltext_out16_(int x, int y, const char *texto, int color)
 	}
 }
 
-static void smalltext_out16(int x, int y, const char *texto, int color)
+void smalltext_out16(int x, int y, const char *texto, int color)
 {
 	char buffer[128];
 	int maxw = (g_menuscreen_w - x) / me_sfont_w;
