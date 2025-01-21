@@ -339,7 +339,7 @@ int in_update_kbd(int *result)
 	for (i = 0; i < in_dev_count; i++) {
 		in_dev_t *dev = &in_devices[i];
 		if (dev->probed && dev->binds != NULL)
-			ret |= DRV(dev->drv_id).update_kbd(dev->drv_data, dev->kbd_binds, result);
+			ret += DRV(dev->drv_id).update_kbd(dev->drv_data, dev->kbd_binds, result+ret);
 	}
 
 	return ret;

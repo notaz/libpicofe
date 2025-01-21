@@ -450,7 +450,7 @@ static int in_sdl_update_kbd(void *drv_data, const int *binds, int *result)
 {
 	struct in_sdl_state *state = drv_data;
 	keybits_t mask;
-	int i, sym, bit, b;
+	int i, sym, bit, b = 0;
 
 	collect_events(state, NULL, NULL);
 
@@ -462,11 +462,11 @@ static int in_sdl_update_kbd(void *drv_data, const int *binds, int *result)
 			if ((mask & 1) == 0)
 				continue;
 			sym = i * KEYBITS_WORD_BITS + bit;
-			result[sym] = binds[sym];
+			result[b++] = binds[sym];
 		}
 	}
 
-	return 0;
+	return b;
 }
 
 
