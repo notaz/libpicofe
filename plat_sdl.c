@@ -154,6 +154,8 @@ int plat_sdl_change_video_mode(int w, int h, int force)
         plat_sdl_screen->w != win_w || plat_sdl_screen->h != win_h)
       plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 16, flags);
     screen_flags = flags;
+    window_w = win_w;
+    window_h = win_h;
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       return -1;
@@ -382,5 +384,11 @@ void plat_sdl_overlay_clear(void)
 int plat_sdl_is_windowed(void)
 {
   return window_b != 0;
+}
+
+int plat_sdl_is_fullscreen(void)
+{
+  // consider window title bar and screen menu here
+  return window_w >= fs_w && window_h >= fs_h - 2*window_b;
 }
 // vim:shiftwidth=2:expandtab

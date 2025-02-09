@@ -26,6 +26,7 @@ struct in_sdl_state {
 	int axis_keydown[2];
 #ifdef SDL_REDRAW_EVT
 	int rdraw;
+	SDL_Event redraw;
 #endif
 	keybits_t keystate[SDLK_LAST / KEYBITS_WORD_BITS + 1];
 	// emulator keys should always be processed immediately lest one is lost
@@ -382,8 +383,10 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 						break;
 					default:
 #ifdef SDL_REDRAW_EVT
-						state->rdraw |= (one_kc != NULL &&
-							event->type == SDL_VIDEORESIZE);
+						if (event->type == SDL_VIDEORESIZE) {
+							state->rdraw = 1;
+							state->redraw = *event;
+						} else
 #endif
 						if (ext_event_handler != NULL)
 							ext_event_handler(event);
@@ -403,6 +406,8 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 #ifdef SDL_REDRAW_EVT
 	// if the event queue has been emptied and resize events were in it
 	if (state->rdraw && count == 0) {
+		if (ext_event_handler != NULL)
+			ext_event_handler(&state->redraw);
 		state->rdraw = 0;
 		// dummy key event to force returning from the key loop,
 		// so the application has a chance to redraw the window
