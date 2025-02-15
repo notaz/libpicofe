@@ -78,6 +78,40 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     plat_sdl_gl_active = 0;
   }
 
+  if (plat_target.vout_method == 0 || 
+      (force && window_w != w && window_h != h)) {
+    Uint32 flags;
+    int win_w = w;
+    int win_h = h;
+
+#if defined SDL_SURFACE_SW
+    flags = SDL_SWSURFACE;
+#elif defined(SDL_TRIPLEBUF) && defined(SDL_BUFFER_3X)
+    flags = SDL_HWSURFACE | SDL_TRIPLEBUF;
+#else
+    flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
+#endif
+    if (plat_target.vout_fullscreen && fs_w && fs_h) {
+      flags |= SDL_FULLSCREEN;
+      win_w = fs_w;
+      win_h = fs_h;
+    } else if (window_b)
+      flags |= SDL_RESIZABLE;
+
+    SDL_PumpEvents();
+
+    if (!plat_sdl_screen || screen_flags != flags ||
+        plat_sdl_screen->w != win_w || plat_sdl_screen->h != win_h)
+      plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 16, flags);
+    screen_flags = flags;
+    window_w = win_w;
+    window_h = win_h;
+    if (plat_sdl_screen == NULL) {
+      fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
+      return -1;
+    }
+  }
+
   if (plat_target.vout_method != 0) {
     Uint32 flags = SDL_RESIZABLE | SDL_SWSURFACE;
     int win_w = window_w;
@@ -126,39 +160,6 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     if (!plat_sdl_gl_active) {
       fprintf(stderr, "warning: could not init GL.\n");
       plat_target.vout_method = 0;
-    }
-  }
-
-  if (plat_target.vout_method == 0) {
-    Uint32 flags;
-    int win_w = w;
-    int win_h = h;
-
-#if defined SDL_SURFACE_SW
-    flags = SDL_SWSURFACE;
-#elif defined(SDL_TRIPLEBUF) && defined(SDL_BUFFER_3X)
-    flags = SDL_HWSURFACE | SDL_TRIPLEBUF;
-#else
-    flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
-#endif
-    if (plat_target.vout_fullscreen && fs_w && fs_h) {
-      flags |= SDL_FULLSCREEN;
-      win_w = fs_w;
-      win_h = fs_h;
-    } else if (window_b)
-      flags |= SDL_RESIZABLE;
-
-    SDL_PumpEvents();
-
-    if (!plat_sdl_screen || screen_flags != flags ||
-        plat_sdl_screen->w != win_w || plat_sdl_screen->h != win_h)
-      plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 16, flags);
-    screen_flags = flags;
-    window_w = win_w;
-    window_h = win_h;
-    if (plat_sdl_screen == NULL) {
-      fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
-      return -1;
     }
   }
 
