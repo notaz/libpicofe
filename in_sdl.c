@@ -28,6 +28,7 @@ struct in_sdl_state {
 	int redraw;
 	SDL_Event revent;
 #endif
+	SDL_Event mevent; // last mouse event
 	keybits_t keystate[SDLK_LAST / KEYBITS_WORD_BITS + 1];
 	// emulator keys should always be processed immediately lest one is lost
 	keybits_t emu_keys[SDLK_LAST / KEYBITS_WORD_BITS + 1];
@@ -389,11 +390,19 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 						} else if (event->type == SDL_VIDEOEXPOSE) {
 							if (state->revent.type == SDL_NOEVENT) {
 								state->redraw = 1;
-								state->revent = *event;
+								state->revent.type = SDL_VIDEOEXPOSE;
 							}
 						} else
 #endif
-						if (ext_event_handler != NULL)
+						if ((event->type == SDL_MOUSEBUTTONDOWN) ||
+						    (event->type == SDL_MOUSEBUTTONUP)) {
+							int mask = SDL_BUTTON(event->button.button);
+							if (event->button.state == SDL_PRESSED)
+								state->mevent.motion.state |= mask;
+							else	state->mevent.motion.state &= ~mask;
+						} else if (event->type == SDL_MOUSEMOTION)
+							state->mevent = *event;
+						else if (ext_event_handler != NULL)
 							ext_event_handler(event);
 						break;
 				}
@@ -480,6 +489,24 @@ static int in_sdl_update_kbd(void *drv_data, const int *binds, int *result)
 	return b;
 }
 
+static int in_sdl_update_analog(void *drv_data, int axis_id, int *result)
+{
+	struct in_sdl_state *state = drv_data;
+	int max;
+
+	if (axis_id >= 2 || axis_id < -1)
+		return -1;
+
+	*result = 0;
+	if (axis_id < 0)
+		*result = state->mevent.motion.state;
+	else if (axis_id && (max = state->revent.resize.h))
+		*result = state->mevent.motion.y * 2*1024/max - 1024;
+	else if (!axis_id && (max = state->revent.resize.w))
+		*result = state->mevent.motion.x * 2*1024/max - 1024;
+
+	return 0;
+}
 
 static int in_sdl_update_keycode(void *drv_data, int *is_down)
 {
@@ -572,6 +599,7 @@ static const in_drv_t in_sdl_drv = {
 	.get_key_names   = in_sdl_get_key_names,
 	.update          = in_sdl_update,
 	.update_kbd      = in_sdl_update_kbd,
+	.update_analog   = in_sdl_update_analog,
 	.update_keycode  = in_sdl_update_keycode,
 	.menu_translate  = in_sdl_menu_translate,
 	.clean_binds     = in_sdl_clean_binds,
