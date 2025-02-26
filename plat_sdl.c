@@ -78,8 +78,8 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     plat_sdl_gl_active = 0;
   }
 
-  if (plat_target.vout_method == 0 || 
-      (force && window_w != w && window_h != h)) {
+  if (plat_target.vout_method == 0 || (force < 0 && (window_w != w || window_h != h
+      || plat_target.vout_fullscreen != old_fullscreen))) {
     Uint32 flags;
     int win_w = w;
     int win_h = h;
@@ -98,6 +98,7 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     } else if (window_b)
       flags |= SDL_RESIZABLE;
 
+    // XXX: workaround some occasional mysterious deadlock in SDL_SetVideoMode
     SDL_PumpEvents();
 
     if (!plat_sdl_screen || screen_flags != flags ||
@@ -109,31 +110,6 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       return -1;
-    }
-  }
-
-  if (plat_target.vout_method != 0) {
-    Uint32 flags = SDL_RESIZABLE | SDL_SWSURFACE;
-    int win_w = window_w;
-    int win_h = window_h;
-
-    if (plat_target.vout_fullscreen) {
-      flags |= SDL_FULLSCREEN;
-      win_w = fs_w;
-      win_h = fs_h;
-    }
-
-    // XXX: workaround some occasional mysterious deadlock in SDL_SetVideoMode
-    // (seen on r-pi)
-    SDL_PumpEvents();
-
-    if (!plat_sdl_screen || screen_flags != flags ||
-        plat_sdl_screen->w != win_w || plat_sdl_screen->h != win_h)
-      plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 0, flags);
-    screen_flags = flags;
-    if (plat_sdl_screen == NULL) {
-      fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
-      plat_target.vout_method = 0;
     }
   }
 
@@ -178,12 +154,11 @@ void plat_sdl_event_handler(void *event_)
   switch (event->type) {
   case SDL_VIDEORESIZE:
     //printf("resize %dx%d\n", event->resize.w, event->resize.h);
-    if ((plat_target.vout_method != 0 || window_b) &&
-        !plat_target.vout_fullscreen && !old_fullscreen)
+    if ((plat_target.vout_method != 0 || window_b) && !plat_target.vout_fullscreen)
     {
-      window_w = event->resize.w & ~3;
-      window_h = event->resize.h & ~3;
-      plat_sdl_change_video_mode(window_w, window_h, 1);
+      int win_w = event->resize.w & ~3;
+      int win_h = event->resize.h & ~3;
+      plat_sdl_change_video_mode(win_w, win_h, -1);
     }
     break;
   case SDL_ACTIVEEVENT:
@@ -263,8 +238,8 @@ int plat_sdl_init(void)
       goto fail;
     }
   }
-  g_menuscreen_w = window_w = plat_sdl_screen->w;
-  g_menuscreen_h = window_h = plat_sdl_screen->h;
+  g_menuscreen_w = plat_sdl_screen->w;
+  g_menuscreen_h = plat_sdl_screen->h;
   g_menuscreen_pp = g_menuscreen_w;
 
   // overlay/gl require native bpp in some cases..
@@ -371,7 +346,7 @@ void plat_sdl_finish(void)
 
 void plat_sdl_overlay_clear(void)
 {
-  int pixels = plat_sdl_overlay->w * plat_sdl_overlay->h;
+  int pixels = plat_sdl_overlay->pitches[0]/2 * plat_sdl_overlay->h;
   int *dst = (int *)plat_sdl_overlay->pixels[0];
   int v = 0x10801080;
 
