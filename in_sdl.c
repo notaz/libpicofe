@@ -400,8 +400,11 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 							if (event->button.state == SDL_PRESSED)
 								state->mevent.motion.state |= mask;
 							else	state->mevent.motion.state &= ~mask;
-						} else if (event->type == SDL_MOUSEMOTION)
+						} else if (event->type == SDL_MOUSEMOTION) {
+							event->motion.xrel += state->mevent.motion.xrel;
+							event->motion.yrel += state->mevent.motion.yrel;
 							state->mevent = *event;
+						}
 						else if (ext_event_handler != NULL)
 							ext_event_handler(event);
 						break;
@@ -494,16 +497,30 @@ static int in_sdl_update_analog(void *drv_data, int axis_id, int *result)
 	struct in_sdl_state *state = drv_data;
 	int max;
 
-	if (axis_id >= 2 || axis_id < -1)
-		return -1;
-
 	*result = 0;
-	if (axis_id < 0)
-		*result = state->mevent.motion.state;
-	else if (axis_id && (max = state->revent.resize.h))
-		*result = state->mevent.motion.y * 2*1024/max - 1024;
-	else if (!axis_id && (max = state->revent.resize.w))
-		*result = state->mevent.motion.x * 2*1024/max - 1024;
+
+	switch (axis_id) {
+	// absolute position, clipped at the window/screen border
+	case 0:	if ((max = state->revent.resize.w))
+			*result = state->mevent.motion.x * 2*1024/max - 1024;
+		break;
+	case 1:	if ((max = state->revent.resize.h))
+			*result = state->mevent.motion.y * 2*1024/max - 1024;
+		break;
+	// relative mouse movements since last query
+	case 2:	if ((max = state->revent.resize.w))
+			*result = state->mevent.motion.xrel * 2*1024/max;
+		state->mevent.motion.xrel = 0;
+		break;
+	case 3:	if ((max = state->revent.resize.h))
+			*result = state->mevent.motion.yrel * 2*1024/max;
+		state->mevent.motion.yrel = 0;
+		break;
+	// buttons
+	case -1: *result = state->mevent.motion.state;
+		break;
+	default: return -1;
+	}
 
 	return 0;
 }
