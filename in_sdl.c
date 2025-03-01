@@ -264,13 +264,42 @@ static int get_keystate(keybits_t *keystate, int sym)
 	return !!(*ks_word & mask);
 }
 
+#include "../../pico/sound/mkbd.h"
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+#endif
+
 static int handle_event(struct in_sdl_state *state, SDL_Event *event,
 	int *kc_out, int *down_out, int *emu_out)
 {
-	int emu;
+	const SDLKey chan_key[] = {
+		SDLK_q, SDLK_w, SDLK_e, SDLK_r, SDLK_t, SDLK_y,
+		SDLK_u, SDLK_i, SDLK_o, SDLK_p
+	};
+	int i, emu;
 
 	if (event->type != SDL_KEYDOWN && event->type != SDL_KEYUP)
 		return -1;
+
+	switch (event->key.keysym.sym) {
+	case SDLK_j: mkbd_tempo_kdown(0, event->type == SDL_KEYDOWN); return -1;
+	case SDLK_k: mkbd_tempo_kdown(1, event->type == SDL_KEYDOWN); return -1;
+	default: break;
+	}
+
+	if (event->type == SDL_KEYDOWN) {
+		for (i = 0; i < ARRAY_SIZE(chan_key); i++) {
+			if (event->key.keysym.sym != chan_key[i])
+				continue;
+			mkbd_steal_toggle(i, event->key.keysym.mod & KMOD_LSHIFT);
+			return -1;
+		}
+		switch (event->key.keysym.sym) {
+		case SDLK_l: mkbd_stop_z80 = !mkbd_stop_z80; return -1;
+		default: break;
+		}
+	}
 
 	emu = get_keystate(state->emu_keys, event->key.keysym.sym);
 	update_keystate(state->keystate, event->key.keysym.sym,

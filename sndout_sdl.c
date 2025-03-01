@@ -14,7 +14,7 @@
 
 // ~1/3s at 44kHz
 // set this to power of 2
-#define BUF_LEN 32768
+#define BUF_LEN (8*1024) //32768
 #define BUF_MASK (BUF_LEN - 1)
 
 static short buf[BUF_LEN];
