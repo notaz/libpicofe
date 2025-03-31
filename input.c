@@ -37,7 +37,6 @@ static int in_driver_count = 0;
 static int in_dev_count = 0;		/* probed + bind devices */
 static int in_have_async_devs = 0;
 static int in_probe_dev_id;
-static int in_probe_dev_ix;
 static int menu_key_state = 0;
 static int menu_last_used_dev = 0;
 static int menu_key_prev = 0;
@@ -66,13 +65,8 @@ static int *in_alloc_binds(int drv_id, int key_count)
 			    && defbinds[i].bit == 0)
 				break;
 
-			if (defbinds[i].btype == IN_BINDTYPE_PLAYER12) {
-				unsigned btype = IN_BINDTYPE_PLAYER12 + (in_probe_dev_ix >= 2);
-				binds_d[IN_BIND_OFFS(defbinds[i].code, btype)] |=
-					1 <<(defbinds[i].bit + (in_probe_dev_ix&1)*16);
-			} else
-				binds_d[IN_BIND_OFFS(defbinds[i].code, defbinds[i].btype)] |=
-					1 << defbinds[i].bit;
+			binds_d[IN_BIND_OFFS(defbinds[i].code, defbinds[i].btype)] |=
+				1 << defbinds[i].bit;
 		}
 	}
 
@@ -203,7 +197,6 @@ update:
 			in_devices[i].binds = NULL;
 		}
 	}
-	in_probe_dev_ix ++;
 }
 
 /* key combo handling, to be called by drivers that support it.
@@ -286,7 +279,6 @@ void in_probe(void)
 
 	for (i = 0; i < in_driver_count; i++) {
 		in_probe_dev_id = i;
-		in_probe_dev_ix = 0;
 		in_drivers[i].probe(&DRV(i));
 	}
 
