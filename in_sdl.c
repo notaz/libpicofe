@@ -24,10 +24,8 @@ struct in_sdl_state {
 	SDL_Joystick *joy;
 	int joy_id;
 	int axis_keydown[2];
-#ifdef SDL_REDRAW_EVT
 	int redraw;
 	SDL_Event revent;
-#endif
 	SDL_Event mevent; // last mouse event
 	keybits_t keystate[SDLK_LAST / KEYBITS_WORD_BITS + 1];
 	// emulator keys should always be processed immediately lest one is lost
@@ -383,7 +381,6 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 						SDL_PushEvent(event);
 						break;
 					default:
-#ifdef SDL_REDRAW_EVT
 						if (event->type == SDL_VIDEORESIZE) {
 							state->redraw = 1;
 							state->revent = *event;
@@ -393,7 +390,6 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 								state->revent.type = SDL_VIDEOEXPOSE;
 							}
 						} else
-#endif
 						if ((event->type == SDL_MOUSEBUTTONDOWN) ||
 						    (event->type == SDL_MOUSEBUTTONUP)) {
 							int mask = SDL_BUTTON(event->button.button);
@@ -420,7 +416,6 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 		}
 	}
 
-#ifdef SDL_REDRAW_EVT
 	// if the event queue has been emptied and resize/expose events were in it
 	if (state->redraw && count == 0) {
 		if (ext_event_handler != NULL)
@@ -436,7 +431,6 @@ static int collect_events(struct in_sdl_state *state, int *one_kc, int *one_down
 		if (one_down != NULL)
 			*one_down = 1;
 	} else
-#endif
 		i++;
 	// don't lose events other devices might want to handle
 	if (i < count)
@@ -569,11 +563,9 @@ static int in_sdl_menu_translate(void *drv_data, int keycode, char *charcode)
 	}
 	else
 	{
-#ifdef SDL_REDRAW_EVT
 		if (keycode == SDLK_UNKNOWN)
 			ret = PBTN_RDRAW;
 		else
-#endif
 		for (i = 0; i < map_len; i++) {
 			if (map[i].key == keycode) {
 				ret = map[i].pbtn;
