@@ -17,7 +17,11 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#ifdef __FreeBSD__
+#include <dev/evdev/input.h>
+#else
 #include <linux/input.h>
+#endif
 #include <errno.h>
 
 #include "../input.h"
@@ -259,6 +263,7 @@ static void in_evdev_probe(const in_drv_t *drv)
 
 no_abs:
 		if (count == 0 && !have_abs) {
+			free(dev->kbits);
 			free(dev);
 			goto skip;
 		}

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <dirent.h>
 #include <sys/time.h>
 #include <time.h>
@@ -58,7 +59,13 @@ static int plat_get_exe_dir(char *dst, int len)
 	memcpy(dst, PICO_DATA_DIR, sizeof PICO_DATA_DIR);
 	return sizeof(PICO_DATA_DIR) - 1;
 #else
-	int j, ret = readlink("/proc/self/exe", dst, len - 1);
+	int j, ret = readlink(
+#ifdef __FreeBSD__
+	"/proc/curproc/file",
+#else
+	"/proc/self/exe",
+#endif
+	dst, len - 1);
 	if (ret < 0) {
 		perror("readlink");
 		ret = 0;
@@ -213,6 +220,16 @@ void *plat_mmap(unsigned long addr, size_t size, int need_exec, int is_fixed)
 		}
 		flags &= ~MAP_HUGETLB;
 		ret = mmap(req, size, prot, flags, -1, 0);
+#ifdef MADV_HUGEPAGE
+		if (ret != MAP_FAILED && ((uintptr_t)ret & (2*1024*1024 - 1))) {
+			// try to manually realign assuming bottom-to-top alloc
+			munmap(ret, size);
+			ret = (void *)((uintptr_t)ret & ~(2*1024*1024 - 1));
+			ret = mmap(ret, size, prot, flags, -1, 0);
+		}
+		if (ret != MAP_FAILED)
+			madvise(ret, size, MADV_HUGEPAGE);
+#endif
 	}
 	if (ret == MAP_FAILED)
 		return NULL;

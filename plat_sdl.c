@@ -27,6 +27,7 @@ SDL_Overlay *plat_sdl_overlay;
 int plat_sdl_gl_active;
 void (*plat_sdl_resize_cb)(int w, int h);
 void (*plat_sdl_quit_cb)(void);
+int plat_sdl_no_overlay2x;
 
 static char vid_drv_name[32];
 static int window_w, window_h, window_b;
@@ -115,7 +116,7 @@ int plat_sdl_change_video_mode(int w, int h, int force)
 
   if (plat_target.vout_method == vout_mode_overlay
       || plat_target.vout_method == vout_mode_overlay2x) {
-    int W = plat_target.vout_method == vout_mode_overlay2x && w < 640 ? 2*w : w;
+    int W = plat_target.vout_method == vout_mode_overlay2x && !plat_sdl_no_overlay2x ? 2*w : w;
     plat_sdl_overlay = SDL_CreateYUVOverlay(W, h, SDL_UYVY_OVERLAY, plat_sdl_screen);
     if (plat_sdl_overlay != NULL && SDL_LockYUVOverlay(plat_sdl_overlay) == 0) {
       if ((uintptr_t)plat_sdl_overlay->pixels[0] & 3)
