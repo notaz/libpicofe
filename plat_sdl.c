@@ -56,6 +56,23 @@ static Uint32 get_screen_flags(void)
   return flags;
 }
 
+static void update_wm_display_window(void)
+{
+  // get x11 display/window for GL
+#ifdef SDL_VIDEO_DRIVER_X11
+  SDL_SysWMinfo wminfo;
+  int ret;
+  if (strcmp(vid_drv_name, "x11") == 0) {
+    SDL_VERSION(&wminfo.version);
+    ret = SDL_GetWMInfo(&wminfo);
+    if (ret > 0) {
+      display = wminfo.info.x11.display;
+      window = (void *)wminfo.info.x11.window;
+    }
+  }
+#endif
+}
+
 /* w, h is layer resolution */
 int plat_sdl_change_video_mode(int w, int h, int force)
 {
@@ -119,6 +136,8 @@ int plat_sdl_change_video_mode(int w, int h, int force)
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       return -1;
     }
+    if (vout_mode_gl != -1)
+      update_wm_display_window();
     screen_flags = flags;
     window_w = win_w;
     window_h = win_h;
@@ -201,7 +220,6 @@ int plat_sdl_init(void)
 {
   static const char *vout_list[] = { NULL, NULL, NULL, NULL, NULL };
   const SDL_VideoInfo *info;
-  SDL_SysWMinfo wminfo;
   const char *env;
   int overlay_works = 0;
   int gl_works = 0;
@@ -290,21 +308,7 @@ int plat_sdl_init(void)
   else
     fprintf(stderr, "overlay is not available.\n");
 
-  // get x11 display/window for GL
   SDL_VideoDriverName(vid_drv_name, sizeof(vid_drv_name));
-#ifdef SDL_VIDEO_DRIVER_X11
-  if (strcmp(vid_drv_name, "x11") == 0) {
-    SDL_VERSION(&wminfo.version);
-    ret = SDL_GetWMInfo(&wminfo);
-    if (ret > 0) {
-      display = wminfo.info.x11.display;
-      window = (void *)wminfo.info.x11.window;
-    }
-  }
-#else
-  (void)wminfo;
-#endif
-
   ret = -1;
   try_gl = 1;
   env = getenv("DISPLAY");
@@ -317,8 +321,10 @@ int plat_sdl_init(void)
   env = getenv("PICOFE_GL");
   if (env)
     try_gl = atoi(env);
-  if (try_gl)
+  if (try_gl) {
+    update_wm_display_window();
     ret = gl_init(display, window, &gl_quirks, g_menuscreen_w, g_menuscreen_h);
+  }
   if (ret == 0) {
     gl_announce();
     gl_works = 1;
