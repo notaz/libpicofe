@@ -5,7 +5,9 @@
 
 int  gl_init(void *display, void *window, int *quirks, int w, int h);
 void gl_announce(void);
+int  gl_flip_v(const void *fb, int w, int h, const float *vertices);
 int  gl_flip(const void *fb, int w, int h);
+void gl_clear(void);
 void gl_finish(void);
 
 /* for external flips */
@@ -21,13 +23,16 @@ static __inline int gl_init(void *display, void *window, int *quirks, int w, int
 static __inline void gl_announce(void)
 {
 }
+static __inline int gl_flip_v(const void *fb, int w, int h, const float *vertices)
+{
+  return -1;
+}
 static __inline int gl_flip(const void *fb, int w, int h)
 {
   return -1;
 }
-static __inline void gl_finish(void)
-{
-}
+static __inline void gl_clear(void) {}
+static __inline void gl_finish(void) {}
 
 #define gl_es_display (void *)0
 #define gl_es_surface (void *)0
