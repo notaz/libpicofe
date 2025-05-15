@@ -23,6 +23,7 @@ struct in_sdl_state {
 	const in_drv_t *drv;
 	SDL_Joystick *joy;
 	int joy_id;
+	int numaxes;
 	int axis_keydown[2];
 	int redraw;
 	SDL_Event revent;
@@ -207,6 +208,7 @@ static void in_sdl_probe(const in_drv_t *drv)
 		}
 		state->joy = joy;
 		state->joy_id = i;
+		state->numaxes = SDL_JoystickNumAxes(joy);
 		state->drv = drv;
 
 		snprintf(name, sizeof(name), IN_SDL_PREFIX "%s", SDL_JoystickName(i));
@@ -486,6 +488,23 @@ static int in_sdl_update_kbd(void *drv_data, const int *binds, int *result)
 	return b;
 }
 
+static int in_sdl_update_analog(void *drv_data, int axis_id, int *result)
+{
+	struct in_sdl_state *state = drv_data;
+	int v;
+
+	if (!state || !state->joy || !result)
+		return -1;
+	if ((unsigned)axis_id >= (unsigned)state->numaxes)
+		return -1;
+
+	v = SDL_JoystickGetAxis(state->joy, axis_id);
+
+	// -32768...32767 -> -IN_ABS_RANGE...IN_ABS_RANGE
+	*result = (v + ((v >> 31) | 1)) / (32768 / IN_ABS_RANGE);
+	return 0;
+}
+
 static int in_sdl_update_pointer(void *drv_data, int id, int *result)
 {
 	struct in_sdl_state *state = drv_data;
@@ -601,6 +620,21 @@ static int in_sdl_clean_binds(void *drv_data, int *binds, int *def_finds)
 	return cnt;
 }
 
+static int in_sdl_get_config(void *drv_data, int what, int *val)
+{
+	struct in_sdl_state *state = drv_data;
+
+	switch (what) {
+	case IN_CFG_ABS_AXIS_COUNT:
+		*val = state->numaxes;
+		break;
+	default:
+		return -1;
+	}
+
+	return 0;
+}
+
 static const in_drv_t in_sdl_drv = {
 	.prefix          = IN_SDL_PREFIX,
 	.probe           = in_sdl_probe,
@@ -608,10 +642,12 @@ static const in_drv_t in_sdl_drv = {
 	.get_key_names   = in_sdl_get_key_names,
 	.update          = in_sdl_update,
 	.update_kbd      = in_sdl_update_kbd,
+	.update_analog   = in_sdl_update_analog,
 	.update_pointer  = in_sdl_update_pointer,
 	.update_keycode  = in_sdl_update_keycode,
 	.menu_translate  = in_sdl_menu_translate,
 	.clean_binds     = in_sdl_clean_binds,
+	.get_config      = in_sdl_get_config,
 };
 
 int in_sdl_init(const struct in_pdata *pdata, void (*handler)(void *event))
