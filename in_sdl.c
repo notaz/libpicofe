@@ -486,14 +486,14 @@ static int in_sdl_update_kbd(void *drv_data, const int *binds, int *result)
 	return b;
 }
 
-static int in_sdl_update_analog(void *drv_data, int axis_id, int *result)
+static int in_sdl_update_pointer(void *drv_data, int id, int *result)
 {
 	struct in_sdl_state *state = drv_data;
 	int max;
 
 	*result = 0;
 
-	switch (axis_id) {
+	switch (id) {
 	// absolute position, clipped at the window/screen border
 	case 0:	if ((max = state->revent.resize.w))
 			*result = state->mevent.motion.x * 2*1024/max - 1024;
@@ -608,7 +608,7 @@ static const in_drv_t in_sdl_drv = {
 	.get_key_names   = in_sdl_get_key_names,
 	.update          = in_sdl_update,
 	.update_kbd      = in_sdl_update_kbd,
-	.update_analog   = in_sdl_update_analog,
+	.update_pointer  = in_sdl_update_pointer,
 	.update_keycode  = in_sdl_update_keycode,
 	.menu_translate  = in_sdl_menu_translate,
 	.clean_binds     = in_sdl_clean_binds,
