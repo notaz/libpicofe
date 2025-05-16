@@ -620,7 +620,7 @@ static int in_sdl_clean_binds(void *drv_data, int *binds, int *def_finds)
 	return cnt;
 }
 
-static int in_sdl_get_config(void *drv_data, int what, int *val)
+static int in_sdl_get_config(void *drv_data, enum in_cfg_opt what, int *val)
 {
 	struct in_sdl_state *state = drv_data;
 

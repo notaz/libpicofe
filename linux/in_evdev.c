@@ -429,7 +429,7 @@ static int in_evdev_set_blocking(in_evdev_t *dev, int y)
 	return 0;
 }
 
-static int in_evdev_get_config(void *drv_data, int what, int *val)
+static int in_evdev_get_config(void *drv_data, enum in_cfg_opt what, int *val)
 {
 	in_evdev_t *dev = drv_data;
 
@@ -444,7 +444,7 @@ static int in_evdev_get_config(void *drv_data, int what, int *val)
 	return 0;
 }
 
-static int in_evdev_set_config(void *drv_data, int what, int val)
+static int in_evdev_set_config(void *drv_data, enum in_cfg_opt what, int val)
 {
 	in_evdev_t *dev = drv_data;
 	int tmp;
