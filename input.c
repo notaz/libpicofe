@@ -564,7 +564,7 @@ const int *in_get_dev_kbd_def_binds(int dev_id)
 	return dev->kbd_binds;
 }
 
-int in_get_config(int dev_id, int what, void *val)
+int in_get_config(int dev_id, enum in_cfg_opt what, void *val)
 {
 	int *ival = val;
 	in_dev_t *dev;
@@ -619,7 +619,7 @@ static int in_set_blocking(int is_blocking)
 	return 0;
 }
 
-int in_set_config(int dev_id, int what, const void *val, int size)
+int in_set_config(int dev_id, enum in_cfg_opt what, const void *val, size_t size)
 {
 	const char * const *names;
 	const int *ival = val;
@@ -1063,8 +1063,8 @@ void in_debug_dump(void)
 
 static void in_def_free(void *drv_data) {}
 static int  in_def_clean_binds(void *drv_data, int *b, int *db) { return 1; }
-static int  in_def_get_config(void *drv_data, int what, int *val) { return -1; }
-static int  in_def_set_config(void *drv_data, int what, int val) { return -1; }
+static int  in_def_get_config(void *drv_data, enum in_cfg_opt what, int *val) { return -1; }
+static int  in_def_set_config(void *drv_data, enum in_cfg_opt what, int val) { return -1; }
 static int  in_def_update_analog(void *drv_data, int axis_id, int *result) { return -1; }
 static int  in_def_update_pointer(void *drv_data, int id, int *result) { return -1; }
 static int  in_def_update_keycode(void *drv_data, int *is_down) { return 0; }

@@ -1,6 +1,8 @@
 #ifndef INCLUDE_uXt8Z4R7EMpuEEtvSibXjNhKH3741VNc
 #define INCLUDE_uXt8Z4R7EMpuEEtvSibXjNhKH3741VNc 1
 
+#include <stdlib.h>
+
 #define IN_MAX_DEVS 10
 #define IN_ABS_RANGE 1024	/* abs must be centered at 0, move upto +- this */
 
@@ -51,7 +53,7 @@
 
 #endif
 
-enum {
+enum in_cfg_opt {
 	IN_CFG_BIND_COUNT = 0,
 	IN_CFG_DOES_COMBOS,
 	IN_CFG_BLOCKING,
@@ -84,8 +86,8 @@ struct InputDriver {
 	const char * const *
 	     (*get_key_names)(const in_drv_t *drv, int *count);
 	int  (*clean_binds)(void *drv_data, int *binds, int *def_finds);
-	int  (*get_config)(void *drv_data, int what, int *val);
-	int  (*set_config)(void *drv_data, int what, int val);
+	int  (*get_config)(void *drv_data, enum in_cfg_opt what, int *val);
+	int  (*set_config)(void *drv_data, enum in_cfg_opt what, int val);
 	int  (*update)(void *drv_data, const int *binds, int *result);
 	int  (*update_kbd)(void *drv_data, const int *binds, int *result);
 	int  (*update_analog)(void *drv_data, int axis_id, int *result);
@@ -144,8 +146,8 @@ int  in_menu_wait(int interesting, char *charcode, int autorep_delay_ms);
 int  in_config_parse_dev(const char *dev_name);
 int  in_config_bind_key(int dev_id, const char *key, int binds, int bind_type);
 int  in_config_bind_kbd_key(int dev_id, const char *key, int kbd_key);
-int  in_get_config(int dev_id, int what, void *val);
-int  in_set_config(int dev_id, int what, const void *val, int size);
+int  in_get_config(int dev_id, enum in_cfg_opt what, void *val);
+int  in_set_config(int dev_id, enum in_cfg_opt what, const void *val, size_t size);
 int  in_get_key_code(int dev_id, const char *key_name);
 int  in_name_to_id(const char *dev_name);
 int  in_bind_key(int dev_id, int keycode, int mask, int bind_type, int force_unbind);
