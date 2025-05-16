@@ -350,6 +350,16 @@ int in_update_analog(int dev_id, int axis_id, int *result)
 	return DRV(dev->drv_id).update_analog(dev->drv_data, axis_id, result);
 }
 
+int in_update_pointer(int dev_id, int id, int *result)
+{
+	in_dev_t *dev = get_dev(dev_id);
+
+	if (dev == NULL || !dev->probed)
+		return -1;
+
+	return DRV(dev->drv_id).update_pointer(dev->drv_data, id, result);
+}
+
 static int in_update_kc_async(int *dev_id_out, int *is_down_out, int timeout_ms)
 {
 	int i, is_down, result;
@@ -1056,6 +1066,7 @@ static int  in_def_clean_binds(void *drv_data, int *b, int *db) { return 1; }
 static int  in_def_get_config(void *drv_data, int what, int *val) { return -1; }
 static int  in_def_set_config(void *drv_data, int what, int val) { return -1; }
 static int  in_def_update_analog(void *drv_data, int axis_id, int *result) { return -1; }
+static int  in_def_update_pointer(void *drv_data, int id, int *result) { return -1; }
 static int  in_def_update_keycode(void *drv_data, int *is_down) { return 0; }
 static int  in_def_menu_translate(void *drv_data, int keycode, char *ccode) { return 0; }
 static int  in_def_get_key_code(const char *key_name) { return -1; }
@@ -1086,6 +1097,7 @@ int in_register_driver(const in_drv_t *drv,
 	CHECK_ADD_STUB(new_drivers[in_driver_count], get_config);
 	CHECK_ADD_STUB(new_drivers[in_driver_count], set_config);
 	CHECK_ADD_STUB(new_drivers[in_driver_count], update_analog);
+	CHECK_ADD_STUB(new_drivers[in_driver_count], update_pointer);
 	CHECK_ADD_STUB(new_drivers[in_driver_count], update_keycode);
 	CHECK_ADD_STUB(new_drivers[in_driver_count], menu_translate);
 	CHECK_ADD_STUB(new_drivers[in_driver_count], get_key_code);

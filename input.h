@@ -89,6 +89,7 @@ struct InputDriver {
 	int  (*update)(void *drv_data, const int *binds, int *result);
 	int  (*update_kbd)(void *drv_data, const int *binds, int *result);
 	int  (*update_analog)(void *drv_data, int axis_id, int *result);
+	int  (*update_pointer)(void *drv_data, int axis_id, int *result);
 	/* return -1 on no event, -2 on error */
 	int  (*update_keycode)(void *drv_data, int *is_down);
 	int  (*menu_translate)(void *drv_data, int keycode, char *charcode);
@@ -135,6 +136,7 @@ void in_init(void);
 void in_probe(void);
 int  in_update(int *result);
 int  in_update_analog(int dev_id, int axis_id, int *value);
+int  in_update_pointer(int dev_id, int id, int *result);
 int  in_update_keycode(int *dev_id, int *is_down, char *charcode, int timeout_ms);
 int  in_update_kbd(int *result);
 int  in_menu_wait_any(char *charcode, int timeout_ms);

@@ -33,10 +33,45 @@ static char vid_drv_name[32];
 static int window_w, window_h, window_b;
 static int fs_w, fs_h;
 static int old_fullscreen;
-static int screen_flags;
 static int vout_mode_overlay = -1, vout_mode_overlay2x = -1, vout_mode_gl = -1;
 static void *display, *window;
 static int gl_quirks;
+static Uint32 screen_flags =
+#if defined(SDL_SURFACE_SW)
+  SDL_SWSURFACE;
+#elif defined(SDL_TRIPLEBUF) && defined(SDL_BUFFER_3X)
+  SDL_HWSURFACE | SDL_TRIPLEBUF;
+#else
+  SDL_HWSURFACE | SDL_DOUBLEBUF;
+#endif
+
+static Uint32 get_screen_flags(void)
+{
+  Uint32 flags = screen_flags;
+  flags &= ~(SDL_FULLSCREEN | SDL_RESIZABLE);
+  if (plat_target.vout_fullscreen && fs_w && fs_h)
+    flags |= SDL_FULLSCREEN;
+  else if (window_b)
+    flags |= SDL_RESIZABLE;
+  return flags;
+}
+
+static void update_wm_display_window(void)
+{
+  // get x11 display/window for GL
+#ifdef SDL_VIDEO_DRIVER_X11
+  SDL_SysWMinfo wminfo;
+  int ret;
+  if (strcmp(vid_drv_name, "x11") == 0) {
+    SDL_VERSION(&wminfo.version);
+    ret = SDL_GetWMInfo(&wminfo);
+    if (ret > 0) {
+      display = wminfo.info.x11.display;
+      window = (void *)wminfo.info.x11.window;
+    }
+  }
+#endif
+}
 
 /* w, h is layer resolution */
 int plat_sdl_change_video_mode(int w, int h, int force)
@@ -81,37 +116,31 @@ int plat_sdl_change_video_mode(int w, int h, int force)
 
   if (plat_target.vout_method == 0 || (force < 0 && (window_w != w || window_h != h
       || plat_target.vout_fullscreen != old_fullscreen))) {
-    Uint32 flags;
+    Uint32 flags = get_screen_flags();
     int win_w = w;
     int win_h = h;
 
-#if defined SDL_SURFACE_SW
-    flags = SDL_SWSURFACE;
-#elif defined(SDL_TRIPLEBUF) && defined(SDL_BUFFER_3X)
-    flags = SDL_HWSURFACE | SDL_TRIPLEBUF;
-#else
-    flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
-#endif
     if (plat_target.vout_fullscreen && fs_w && fs_h) {
-      flags |= SDL_FULLSCREEN;
       win_w = fs_w;
       win_h = fs_h;
-    } else if (window_b)
-      flags |= SDL_RESIZABLE;
+    }
 
     // XXX: workaround some occasional mysterious deadlock in SDL_SetVideoMode
     SDL_PumpEvents();
 
     if (!plat_sdl_screen || screen_flags != flags ||
-        plat_sdl_screen->w != win_w || plat_sdl_screen->h != win_h)
+        plat_sdl_screen->w != win_w || plat_sdl_screen->h != win_h ||
+        (!plat_sdl_screen->format || plat_sdl_screen->format->BitsPerPixel != 16))
       plat_sdl_screen = SDL_SetVideoMode(win_w, win_h, 16, flags);
-    screen_flags = flags;
-    window_w = win_w;
-    window_h = win_h;
     if (plat_sdl_screen == NULL) {
       fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
       return -1;
     }
+    if (vout_mode_gl != -1)
+      update_wm_display_window();
+    screen_flags = flags;
+    window_w = win_w;
+    window_h = win_h;
   }
 
   if (plat_target.vout_method == vout_mode_overlay
@@ -191,11 +220,11 @@ int plat_sdl_init(void)
 {
   static const char *vout_list[] = { NULL, NULL, NULL, NULL, NULL };
   const SDL_VideoInfo *info;
-  SDL_SysWMinfo wminfo;
   const char *env;
   int overlay_works = 0;
   int gl_works = 0;
   int i, ret, h;
+  Uint32 flags;
   int try_gl;
 
   ret = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE);
@@ -225,12 +254,19 @@ int plat_sdl_init(void)
       g_menuscreen_h = h;
   }
 
-  plat_sdl_screen = SDL_SetVideoMode(g_menuscreen_w, g_menuscreen_h, 16, SDL_HWSURFACE);
+  plat_sdl_screen = SDL_SetVideoMode(g_menuscreen_w, g_menuscreen_h, 16,
+      (flags = get_screen_flags()));
   if (plat_sdl_screen == NULL) {
-    plat_sdl_screen = SDL_SetVideoMode(0, 0, 16, SDL_SWSURFACE);
+    fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
+    plat_sdl_screen = SDL_SetVideoMode(0, 0, 16, (flags = get_screen_flags()));
     if (plat_sdl_screen == NULL) {
-      fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
-      goto fail;
+      fprintf(stderr, "attempting SDL_SWSURFACE fallback\n");
+      screen_flags = SDL_SWSURFACE;
+      plat_sdl_screen = SDL_SetVideoMode(0, 0, 16, (flags = get_screen_flags()));
+      if (plat_sdl_screen == NULL) {
+        fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
+        goto fail;
+      }
     }
 
     if (plat_sdl_screen->w < 320 || plat_sdl_screen->h < 240) {
@@ -243,13 +279,16 @@ int plat_sdl_init(void)
   g_menuscreen_h = plat_sdl_screen->h;
   g_menuscreen_pp = g_menuscreen_w;
 
-  // overlay/gl require native bpp in some cases..
+  // overlay/gl require native bpp in some cases...
   plat_sdl_screen = SDL_SetVideoMode(g_menuscreen_w, g_menuscreen_h,
-    0, plat_sdl_screen->flags);
+    0, (flags = get_screen_flags()));
   if (plat_sdl_screen == NULL) {
     fprintf(stderr, "SDL_SetVideoMode failed: %s\n", SDL_GetError());
     goto fail;
   }
+  screen_flags = flags;
+  window_w = plat_sdl_screen->w;
+  window_h = plat_sdl_screen->h;
 
   plat_sdl_overlay = SDL_CreateYUVOverlay(plat_sdl_screen->w, plat_sdl_screen->h,
     SDL_UYVY_OVERLAY, plat_sdl_screen);
@@ -269,21 +308,7 @@ int plat_sdl_init(void)
   else
     fprintf(stderr, "overlay is not available.\n");
 
-  // get x11 display/window for GL
   SDL_VideoDriverName(vid_drv_name, sizeof(vid_drv_name));
-#ifdef SDL_VIDEO_DRIVER_X11
-  if (strcmp(vid_drv_name, "x11") == 0) {
-    SDL_VERSION(&wminfo.version);
-    ret = SDL_GetWMInfo(&wminfo);
-    if (ret > 0) {
-      display = wminfo.info.x11.display;
-      window = (void *)wminfo.info.x11.window;
-    }
-  }
-#else
-  (void)wminfo;
-#endif
-
   ret = -1;
   try_gl = 1;
   env = getenv("DISPLAY");
@@ -296,8 +321,10 @@ int plat_sdl_init(void)
   env = getenv("PICOFE_GL");
   if (env)
     try_gl = atoi(env);
-  if (try_gl)
+  if (try_gl) {
+    update_wm_display_window();
     ret = gl_init(display, window, &gl_quirks, g_menuscreen_w, g_menuscreen_h);
+  }
   if (ret == 0) {
     gl_announce();
     gl_works = 1;
