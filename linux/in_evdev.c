@@ -437,6 +437,8 @@ static int in_evdev_get_config(void *drv_data, enum in_cfg_opt what, int *val)
 	case IN_CFG_ABS_AXIS_COUNT:
 		*val = dev->abs_count;
 		break;
+	case IN_CFG_ANALOG_MAP_ULDR:
+		*val = dev->abs_to_digital;
 	default:
 		return -1;
 	}
@@ -463,6 +465,8 @@ static int in_evdev_set_config(void *drv_data, enum in_cfg_opt what, int val)
 		else if (dev->abs_lzone >= tmp)
 			dev->abs_lzone = tmp - 1;
 		break;
+	case IN_CFG_ANALOG_MAP_ULDR:
+		dev->abs_to_digital = val;
 	default:
 		return -1;
 	}
