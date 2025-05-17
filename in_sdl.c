@@ -658,19 +658,24 @@ static int in_sdl_menu_translate(void *drv_data, int keycode, char *charcode)
 	return ret;
 }
 
-static int in_sdl_clean_binds(void *drv_data, int *binds, int *def_finds)
+static int in_sdl_clean_binds(void *drv_data, int *binds, int *def_binds)
 {
 	struct in_sdl_state *state = drv_data;
 	int i, t, cnt = 0;
 
 	memset(state->emu_keys, 0, sizeof(state->emu_keys));
-	for (t = 0; t < IN_BINDTYPE_COUNT; t++)
-		for (i = 0; i < SDLK_LAST; i++)
-			if (binds[IN_BIND_OFFS(i, t)]) {
+	for (t = 0; t < IN_BINDTYPE_COUNT; t++) {
+		for (i = 0; i < SDLK_LAST; i++) {
+			int offs = IN_BIND_OFFS(i, t);
+			if (state->joy && i < SDLK_WORLD_0)
+				binds[offs] = def_binds[offs] = 0;
+			if (binds[offs]) {
 				if (t == IN_BINDTYPE_EMU)
 					update_keystate(state->emu_keys, i, 1);
 				cnt ++;
 			}
+		}
+	}
 
 	return cnt;
 }
