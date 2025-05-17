@@ -27,9 +27,10 @@ struct in_sdl_state {
 	const in_drv_t *drv;
 	SDL_Joystick *joy;
 	int joy_id;
-	int numaxes;
-	int axis_keydown[2];
-	int hat_down;
+	int joy_numaxes;
+	int joy_numbuttons;
+	int *joy_axis_keydown;
+	int joy_hat_down;
 	unsigned int redraw:1;
 	unsigned int abs_to_udlr:1;
 	unsigned int hat_warned:1;
@@ -176,10 +177,9 @@ static const char * const in_sdl_keys[SDLK_LAST] = {
 	[SDLK_COMPOSE] = "compose",
 };
 
-static struct in_sdl_state *state_alloc(void)
+static struct in_sdl_state *state_alloc(int joy_numaxes)
 {
 	struct in_sdl_state *state;
-	size_t i;
 
 	state = calloc(1, sizeof(*state));
 	if (state == NULL) {
@@ -187,9 +187,16 @@ static struct in_sdl_state *state_alloc(void)
 		return NULL;
 	}
 
-	state->abs_to_udlr = 1;
-	for (i = 0; i < ARRAY_SIZE(state->axis_keydown); i++)
-		state->axis_keydown[i] = -1;
+	if (joy_numaxes) {
+		state->abs_to_udlr = 1;
+		state->joy_numaxes = joy_numaxes;
+		state->joy_axis_keydown = malloc(joy_numaxes * sizeof(state->joy_axis_keydown[0]));
+		if (!state->joy_axis_keydown) {
+			free(state);
+			return NULL;
+		}
+		memset(state->joy_axis_keydown, 0xff, joy_numaxes * sizeof(state->joy_axis_keydown[0]));
+	}
 	return state;
 }
 
@@ -205,7 +212,7 @@ static void in_sdl_probe(const in_drv_t *drv)
 	if (pdata->key_names)
 		key_names = pdata->key_names;
 
-	if (!(state = state_alloc()))
+	if (!(state = state_alloc(0)))
 		return;
 
 	state->drv = drv;
@@ -222,11 +229,11 @@ static void in_sdl_probe(const in_drv_t *drv)
 		if (joy == NULL)
 			continue;
 
-		if (!(state = state_alloc()))
+		if (!(state = state_alloc(SDL_JoystickNumAxes(joy))))
 			break;
 		state->joy = joy;
 		state->joy_id = i;
-		state->numaxes = SDL_JoystickNumAxes(joy);
+		state->joy_numbuttons = SDL_JoystickNumButtons(joy);
 		state->drv = drv;
 
 		snprintf(name, sizeof(name), IN_SDL_PREFIX "%s", SDL_JoystickName(i));
@@ -244,6 +251,7 @@ static void in_sdl_free(void *drv_data)
 	if (state != NULL) {
 		if (state->joy != NULL)
 			SDL_JoystickClose(state->joy);
+		free(state->joy_axis_keydown);
 		free(state);
 	}
 }
@@ -307,33 +315,42 @@ static int handle_event(struct in_sdl_state *state, SDL_Event *event,
 static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
 	int *kc_out, int *down_out, int *emu_out)
 {
-	static const int hat2key[4] = { SDLK_UP, SDLK_RIGHT, SDLK_DOWN, SDLK_LEFT };
+	static const int hat2uldr[4] = { SDLK_UP, SDLK_RIGHT, SDLK_DOWN, SDLK_LEFT };
 	int kc = -1, kc_prev = -1, down = 0, emu = 0, ret = 0, i, val, xor;
+	int kc_button_base = SDLK_WORLD_0;
+	int kc_axis_base = kc_button_base + state->joy_numbuttons;
+	int kc_hat_base = kc_axis_base + state->joy_numaxes;
 
-	/* TODO: remaining axis */
 	switch (event->type) {
 	case SDL_JOYAXISMOTION:
-		if (!state->abs_to_udlr)
-			return -1;
+		if ((unsigned)event->jaxis.axis >= (unsigned)state->joy_numaxes)
+			return 1;
 		if (event->jaxis.which != state->joy_id)
 			return -2;
-		if (event->jaxis.axis > 1)
-			break;
 		if (event->jaxis.value < -16384) {
-			kc = event->jaxis.axis ? SDLK_UP : SDLK_LEFT;
+			if (state->abs_to_udlr && event->jaxis.axis < 2)
+				kc = event->jaxis.axis ? SDLK_UP : SDLK_LEFT;
+			// some pressure sensitive buttons appear as an axis that goes
+			// from -32768 (released) to 32767 (pressed) and there is no
+			// way to distinguish from ones centered at 0? :(
+			//else
+			//	kc = kc_axis_base + event->jaxis.axis * 2;
 			down = 1;
 		}
 		else if (event->jaxis.value > 16384) {
-			kc = event->jaxis.axis ? SDLK_DOWN : SDLK_RIGHT;
+			if (state->abs_to_udlr && event->jaxis.axis < 2)
+				kc = event->jaxis.axis ? SDLK_DOWN : SDLK_RIGHT;
+			else
+				kc = kc_axis_base + event->jaxis.axis * 2 + 1;
 			down = 1;
 		}
-		kc_prev = state->axis_keydown[event->jaxis.axis];
-		state->axis_keydown[event->jaxis.axis] = kc;
+		kc_prev = state->joy_axis_keydown[event->jaxis.axis];
+		state->joy_axis_keydown[event->jaxis.axis] = kc;
 		if (kc == kc_prev)
 			return -1; // no simulated key change
 		if (kc >= 0 && kc_prev >= 0) {
 			// must release the old key first
-			state->axis_keydown[event->jaxis.axis] = -1;
+			state->joy_axis_keydown[event->jaxis.axis] = -1;
 			kc = kc_prev;
 			down = 0;
 		}
@@ -346,21 +363,22 @@ static int handle_joy_event(struct in_sdl_state *state, SDL_Event *event,
 	case SDL_JOYBUTTONUP:
 		if (event->jbutton.which != state->joy_id)
 			return -2;
-		kc = (int)event->jbutton.button + SDLK_WORLD_0;
+		kc = kc_button_base + (int)event->jbutton.button;
 		down = event->jbutton.state == SDL_PRESSED;
 		ret = 1;
 		break;
 	case SDL_JOYHATMOTION:
 		if (event->jhat.which != state->joy_id)
 			return -2;
-		if (event->jhat.hat != 0)
-			return -1; // todo?
-		xor = event->jhat.value ^ state->hat_down;
-		val = state->hat_down = event->jhat.value;
+		xor = event->jhat.value ^ state->joy_hat_down;
+		val = state->joy_hat_down = event->jhat.value;
 		for (i = 0; i < 4; i++, xor >>= 1, val >>= 1) {
 			if (xor & 1) {
+				if (event->jhat.hat)
+					kc = kc_hat_base + event->jhat.hat * 4 + i;
+				else
+					kc = hat2uldr[i];
 				down = val & 1;
-				kc = hat2key[i];
 				ret = 1;
 				break;
 			}
@@ -532,7 +550,7 @@ static int in_sdl_update_analog(void *drv_data, int axis_id, int *result)
 
 	if (!state || !state->joy || !result)
 		return -1;
-	if ((unsigned)axis_id >= (unsigned)state->numaxes)
+	if ((unsigned)axis_id >= (unsigned)state->joy_numaxes)
 		return -1;
 
 	v = SDL_JoystickGetAxis(state->joy, axis_id);
@@ -663,7 +681,7 @@ static int in_sdl_get_config(void *drv_data, enum in_cfg_opt what, int *val)
 
 	switch (what) {
 	case IN_CFG_ABS_AXIS_COUNT:
-		*val = state->numaxes;
+		*val = state->joy_numaxes;
 		break;
 	case IN_CFG_ANALOG_MAP_ULDR:
 		*val = state->abs_to_udlr;
@@ -683,11 +701,11 @@ static int in_sdl_set_config(void *drv_data, enum in_cfg_opt what, int val)
 	switch (what) {
 	case IN_CFG_ANALOG_MAP_ULDR:
 		state->abs_to_udlr = val ? 1 : 0;
-		for (i = 0; !val && i < ARRAY_SIZE(state->axis_keydown); i++) {
-			if (state->axis_keydown[i] < 0)
+		for (i = 0; !val && i < state->joy_numaxes; i++) {
+			if (state->joy_axis_keydown[i] < 0)
 				continue;
-			update_keystate(state->keystate, state->axis_keydown[i], 0);
-			state->axis_keydown[i] = -1;
+			update_keystate(state->keystate, state->joy_axis_keydown[i], 0);
+			state->joy_axis_keydown[i] = -1;
 		}
 		break;
 	default:
