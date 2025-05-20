@@ -402,4 +402,12 @@ void plat_sdl_gl_scaling(int type)
   if (type == 0)
     gl_quirks |= GL_QUIRK_SCALING_NEAREST;
 }
+
+void plat_sdl_gl_vsync(int on)
+{
+  gl_quirks &= ~GL_QUIRK_VSYNC_ON;
+  if (on)
+    gl_quirks |= GL_QUIRK_VSYNC_ON;
+}
+
 // vim:shiftwidth=2:expandtab

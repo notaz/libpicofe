@@ -41,5 +41,6 @@ static __inline void gl_finish(void) {}
 
 #define GL_QUIRK_ACTIVATE_RECREATE 1
 #define GL_QUIRK_SCALING_NEAREST 2
+#define GL_QUIRK_VSYNC_ON 4
 
 #endif // LIBPICOFE_GL_H

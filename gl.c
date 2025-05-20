@@ -123,6 +123,9 @@ int gl_init(void *display, void *window, int *quirks, int w, int h)
 		fprintf(stderr, "eglMakeCurrent: %x\n", eglGetError());
 		goto out;
 	}
+	
+	ret = *quirks & GL_QUIRK_VSYNC_ON ? 1 : 0;
+	eglSwapInterval(edpy, ret);
 
 	// 1.x (fixed-function) only
 	glEnable(GL_TEXTURE_2D);
