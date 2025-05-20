@@ -144,8 +144,9 @@ int gl_init(void *display, void *window, int *quirks, int w, int h)
 		goto out;
 
 	// no mipmaps
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	ret = *quirks & GL_QUIRK_SCALING_NEAREST ? GL_NEAREST : GL_LINEAR;
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, ret);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, ret);
 
 	//glViewport(0, 0, 512, 512);
 	glLoadIdentity();

@@ -395,4 +395,11 @@ int plat_sdl_is_fullscreen(void)
   // consider window title bar and screen menu here
   return window_w >= fs_w && window_h >= fs_h - 2*window_b;
 }
+
+void plat_sdl_gl_scaling(int type)
+{
+  gl_quirks &= ~GL_QUIRK_SCALING_NEAREST;
+  if (type == 0)
+    gl_quirks |= GL_QUIRK_SCALING_NEAREST;
+}
 // vim:shiftwidth=2:expandtab
