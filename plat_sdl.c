@@ -114,7 +114,7 @@ int plat_sdl_change_video_mode(int w, int h, int force)
     plat_sdl_gl_active = 0;
   }
 
-  if (plat_target.vout_method == 0 || (force < 0 && (window_w != w || window_h != h
+  if (plat_target.vout_method == 0 || (force && (window_w != w || window_h != h
       || plat_target.vout_fullscreen != old_fullscreen))) {
     Uint32 flags = get_screen_flags();
     int win_w = w;
@@ -188,7 +188,7 @@ void plat_sdl_event_handler(void *event_)
     {
       int win_w = event->resize.w & ~3;
       int win_h = event->resize.h & ~3;
-      plat_sdl_change_video_mode(win_w, win_h, -1);
+      plat_sdl_change_video_mode(win_w, win_h, 1);
     }
     break;
   case SDL_ACTIVEEVENT:
@@ -337,7 +337,7 @@ int plat_sdl_init(void)
     plat_target.vout_method = vout_mode_overlay = i;
     vout_list[i++] = "Video Overlay";
 #ifdef SDL_OVERLAY_2X
-    vout_mode_overlay2x = i;
+    plat_target.vout_method = vout_mode_overlay2x = i;
     vout_list[i++] = "Video Overlay 2x";
 #endif
   }
