@@ -5,6 +5,7 @@
 
 #include <EGL/egl.h>
 #include <GLES/gl.h>
+#include "gl_loader.h"
 #include "gl_platform.h"
 #include "gl.h"
 
@@ -56,7 +57,7 @@ int gl_init(void *display, void *window, int *quirks, int w, int h)
 	ret = gl_platform_init(&display, &window, quirks);
 	if (ret != 0) {
 		fprintf(stderr, "gl_platform_init failed with %d\n", ret);
-		goto out;
+		return retval;
 	}
 
 	flip_old_w = flip_old_h = 0;
@@ -251,6 +252,9 @@ void gl_clear(void)
 
 void gl_finish(void)
 {
+	if (edpy == EGL_NO_DISPLAY)
+		return; // nothing to do
+
 	// sometimes there is an error... from somewhere?
 	//gl_have_error("finish");
 	glGetError();

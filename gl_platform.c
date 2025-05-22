@@ -3,6 +3,7 @@
 #include <EGL/egl.h>
 #include <GLES/gl.h>
 
+#include "gl_loader.h"
 #include "gl.h"
 #include "gl_platform.h"
 
@@ -117,11 +118,13 @@ int gl_platform_init(void **display, void **window, int *quirks)
 	*window = &m_nativeWindow;
 	*quirks |= GL_QUIRK_ACTIVATE_RECREATE;
 
-	return 0;
+	return gl_load();
 }
 
 void gl_platform_finish(void)
 {
+	gl_unload();
+
 	vc_dispmanx_display_close(m_dispmanDisplay);
 	bcm_host_deinit();
 
@@ -138,11 +141,12 @@ void gl_platform_finish(void)
 
 int gl_platform_init(void **display, void **window, int *quirks)
 {
-	return 0;
+	return gl_load();
 }
 
 void gl_platform_finish(void)
 {
+	gl_unload();
 }
 
 #endif
