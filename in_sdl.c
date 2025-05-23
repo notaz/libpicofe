@@ -117,6 +117,15 @@ static const char * const in_sdl_keys[SDLK_LAST] = {
 	[SDLK_z] = "z",
 	[SDLK_DELETE] = "delete",
 
+	// gamepad buttons
+	#define B(x) [SDLK_WORLD_##x] = "b"#x
+	B(0), B(1), B(2), B(3), B(4), B(5), B(6), B(7),
+	B(8), B(9), B(10), B(11), B(12), B(13), B(14), B(15),
+	B(16), B(17), B(18), B(19), B(20), B(21), B(22), B(23),
+	B(24), B(25), B(26), B(27), B(28), B(29), B(30), B(31),
+	B(32), B(33), B(34), B(35), B(36), B(37), B(38), B(39),
+	#undef B
+
 	[SDLK_KP0] = "[0]",
 	[SDLK_KP1] = "[1]",
 	[SDLK_KP2] = "[2]",
