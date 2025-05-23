@@ -115,7 +115,8 @@ int plat_sdl_change_video_mode(int w, int h, int force)
   }
 
   if (plat_target.vout_method == 0 || (force && (window_w != w || window_h != h
-      || plat_target.vout_fullscreen != old_fullscreen))) {
+      || plat_target.vout_fullscreen != old_fullscreen
+      || !plat_sdl_screen->format || plat_sdl_screen->format->BitsPerPixel != 16))) {
     Uint32 flags = get_screen_flags();
     int win_w = w;
     int win_h = h;
