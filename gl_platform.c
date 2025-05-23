@@ -93,10 +93,9 @@ static void submit_rect(void)
 	vc_dispmanx_update_submit_sync(m_dispmanUpdate);
 }
 
-int gl_platform_init(void **display, void **window, int *quirks)
+int gl_platform_init(void **display, int *quirks)
 {
 	x11display = NULL;
-	x11window = 0;
 
 	x11lib = dlopen("libX11.so.6", RTLD_LAZY);
 	if (x11lib != NULL) {
@@ -107,25 +106,43 @@ int gl_platform_init(void **display, void **window, int *quirks)
 		    && pXTranslateCoordinates != NULL)
 		{
 			x11display = *display;
-			x11window = (Window)*window;
 		}
 	}
 
 	bcm_host_init();
-	submit_rect();
 
 	*display = EGL_DEFAULT_DISPLAY;
-	*window = &m_nativeWindow;
-	*quirks |= GL_QUIRK_ACTIVATE_RECREATE;
 
 	return gl_load();
 }
 
-void gl_platform_finish(void)
+int gl_platform_create(void **window, int *quirks)
+{
+	x11window = 0;
+
+	if (x11lib != NULL) {
+		x11window = (Window)*window;
+	}
+
+	submit_rect();
+
+	*window = &m_nativeWindow;
+	*quirks |= GL_QUIRK_ACTIVATE_RECREATE;
+
+	return !x11lib;
+}
+
+void gl_platform_destroy(void)
+{
+	vc_dispmanx_display_close(m_dispmanDisplay);
+
+	x11window = 0;
+}
+
+void gl_platform_shutdown(void)
 {
 	gl_unload();
 
-	vc_dispmanx_display_close(m_dispmanDisplay);
 	bcm_host_deinit();
 
 	if (x11lib) {
@@ -134,17 +151,25 @@ void gl_platform_finish(void)
 	}
 
 	x11display = NULL;
-	x11window = 0;
 }
 
 #else
 
-int gl_platform_init(void **display, void **window, int *quirks)
+int gl_platform_init(void **display, int *quirks)
 {
 	return gl_load();
 }
 
-void gl_platform_finish(void)
+int gl_platform_create(void **window, int *quirks)
+{
+	return 0;
+}
+
+void gl_platform_destroy(void)
+{
+}
+
+void gl_platform_shutdown(void)
 {
 	gl_unload();
 }

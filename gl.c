@@ -43,7 +43,36 @@ static int gles_have_error(const char *name)
 	return 0;
 }
 
-int gl_init(void *display, void *window, int *quirks, int w, int h)
+int gl_init(void *display, int *quirks)
+{
+	int retval = -1;
+	int ret;
+
+	ret = gl_platform_init(&display, quirks);
+	if (ret != 0) {
+		fprintf(stderr, "gl_platform_init failed with %d\n", ret);
+		return retval;
+	}
+
+	edpy = eglGetDisplay((EGLNativeDisplayType)display);
+	if (edpy == EGL_NO_DISPLAY) {
+		fprintf(stderr, "Failed to get EGL display\n");
+		goto out;
+	}
+
+	if (!eglInitialize(edpy, NULL, NULL)) {
+		fprintf(stderr, "Failed to initialize EGL\n");
+		goto out;
+	}
+	retval = 0;
+
+out:
+	if (retval && edpy != EGL_NO_DISPLAY)
+		gl_shutdown();
+	return retval;
+}
+
+int gl_create(void *window, int *quirks, int w, int h)
 {
 	EGLConfig ecfg = NULL;
 	EGLint num_config;
@@ -54,7 +83,7 @@ int gl_init(void *display, void *window, int *quirks, int w, int h)
 		EGL_NONE
 	};
 
-	ret = gl_platform_init(&display, &window, quirks);
+	ret = gl_platform_create(&window, quirks);
 	if (ret != 0) {
 		fprintf(stderr, "gl_platform_init failed with %d\n", ret);
 		return retval;
@@ -71,17 +100,6 @@ int gl_init(void *display, void *window, int *quirks, int w, int h)
 		goto out;
 	}
 	memset(tex_mem, 0, tex_w * tex_h * 2);
-
-	edpy = eglGetDisplay((EGLNativeDisplayType)display);
-	if (edpy == EGL_NO_DISPLAY) {
-		fprintf(stderr, "Failed to get EGL display\n");
-		goto out;
-	}
-
-	if (!eglInitialize(edpy, NULL, NULL)) {
-		fprintf(stderr, "Failed to initialize EGL\n");
-		goto out;
-	}
 
 	if (!eglChooseConfig(edpy, config_attr, &ecfg, 1, &num_config)) {
 		fprintf(stderr, "Failed to choose config (%x)\n", eglGetError());
@@ -168,7 +186,7 @@ int gl_init(void *display, void *window, int *quirks, int w, int h)
 	retval = 0;
 out:
 	if (retval && edpy != EGL_NO_DISPLAY)
-		gl_finish();
+		gl_destroy();
 	return retval;
 }
 
@@ -250,7 +268,7 @@ void gl_clear(void)
 	gl_have_error("glClear");
 }
 
-void gl_finish(void)
+void gl_destroy(void)
 {
 	if (edpy == EGL_NO_DISPLAY)
 		return; // nothing to do
@@ -275,16 +293,23 @@ void gl_finish(void)
 		eglDestroySurface(edpy, esfc);
 		esfc = EGL_NO_SURFACE;
 	}
+
+	gl_es_surface = (void *)esfc;
+
+	if (tex_mem) free(tex_mem);
+	tex_mem = NULL;
+
+	gl_platform_destroy();
+}
+
+void gl_shutdown(void)
+{
 	if (edpy != EGL_NO_DISPLAY) {
 		eglTerminate(edpy);
 		edpy = EGL_NO_DISPLAY;
 	}
 
 	gl_es_display = (void *)edpy;
-	gl_es_surface = (void *)esfc;
 
-	if (tex_mem) free(tex_mem);
-	tex_mem = NULL;
-
-	gl_platform_finish();
+	gl_platform_shutdown();
 }
