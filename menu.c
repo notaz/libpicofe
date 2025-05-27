@@ -28,6 +28,12 @@
 #pragma GCC diagnostic ignored "-Wformat-truncation"
 #endif
 
+#ifndef _WIN32
+#define PATH_SEP      "/"
+#else
+#define PATH_SEP      "\\"
+#endif
+
 static char static_buff[64];
 static int  menu_error_time = 0;
 char menu_error_msg[64] = { 0, };
@@ -888,7 +894,10 @@ static void draw_dirlist(char *curdir, struct dirent **namelist,
 		if (pos < 0)  continue;
 		if (pos >= max_cnt) break;
 		if (namelist[i]->d_type == DT_DIR) {
-			smalltext_out16(x, pos * me_sfont_h, "/", PXMAKE(0xff, 0xff, 0xb0));
+#ifdef _WIN32 // don't prefix drive letters with the directory marker, it looks confusing
+			if (*curdir)
+#endif
+				smalltext_out16(x, pos * me_sfont_h, PATH_SEP, PXMAKE(0xff, 0xff, 0xb0));
 			smalltext_out16(x + me_sfont_w, pos * me_sfont_h, namelist[i]->d_name, PXMAKE(0xff, 0xff, 0xb0));
 		} else {
 			unsigned short color = fname2color(namelist[i]->d_name);
@@ -899,9 +908,9 @@ static void draw_dirlist(char *curdir, struct dirent **namelist,
 
 	if (show_help) {
 		darken_ptr = (short *)g_menuscreen_ptr
-			+ g_menuscreen_pp * (g_menuscreen_h - me_sfont_h * 5 / 2);
+			+ g_menuscreen_pp * (g_menuscreen_h - me_sfont_h * 4);
 		menu_darken_bg(darken_ptr, darken_ptr,
-			g_menuscreen_pp * (me_sfont_h * 5 / 2), 1);
+			g_menuscreen_pp * (me_sfont_h * 4), 1);
 
 		snprintf(buff, sizeof(buff), "%s - select, %s - back",
 			in_get_key_name(-1, -PBTN_MOK), in_get_key_name(-1, -PBTN_MBACK));
@@ -1011,14 +1020,15 @@ static const char *menu_loop_romsel_d(char *curr_path, int len,
 
 	// is this a dir or a full path?
 	if (!plat_is_dir(curr_path)) {
-		char *p = strrchr(curr_path, '/');
+		char *p = strrchr(curr_path, *PATH_SEP);
 		if (p != NULL) {
 			*p = 0;
 			curr_path_restore = p;
 			snprintf(sel_fname, sizeof(sel_fname), "%s", p + 1);
 		}
 	}
-	show_help = 2;
+	show_help = 2 * (len>=0);
+	if (len < 0) len = -len;
 
 rescan:
 	if (namelist != NULL) {
@@ -1057,7 +1067,7 @@ rescan:
 			continue;
 
 		r = strlen(curr_path);
-		slash = (r && curr_path[r-1] == '/') ? "" : "/";
+		slash = (r && curr_path[r-1] == *PATH_SEP) ? "" : PATH_SEP;
 		snprintf(rom_fname_reload, sizeof(rom_fname_reload),
 			"%s%s%s", curr_path, slash, namelist[i]->d_name);
 		r = stat(rom_fname_reload, &st);
@@ -1077,7 +1087,7 @@ rescan:
 		qsort(namelist, n, sizeof(namelist[0]), scandir_cmp);
 
 	// add ".." if it's somehow not there
-	if (n == 0 || strcmp(namelist[0]->d_name, "..")) {
+	if ((n == 0 || strcmp(namelist[0]->d_name, "..")) && *curr_path) {
 		struct dirent *dotdot = malloc(sizeof(*dotdot));
 		*dotdot = (struct dirent) { .d_name="..", .d_type=DT_DIR };
 		namelist = realloc(namelist, (n+1)*sizeof(*namelist));
@@ -1131,7 +1141,7 @@ rescan:
 			if (namelist[sel]->d_type == DT_REG)
 			{
 				int l = strlen(curr_path);
-				char *slash = l && curr_path[l-1] == '/' ? "" : "/";
+				char *slash = l && curr_path[l-1] == *PATH_SEP ? "" : PATH_SEP;
 				snprintf(rom_fname_reload, sizeof(rom_fname_reload),
 					"%s%s%s", curr_path, slash, namelist[sel]->d_name);
 				if (inp & PBTN_MOK) { // return sel
@@ -1154,18 +1164,23 @@ rescan:
 				if (strcmp(namelist[sel]->d_name, "..") == 0) {
 					char *start = curr_path;
 					p = start + strlen(start) - 1;
-					while (*p == '/' && p > start) p--;
-					while (*p != '/' && p > start) p--;
-					if (p <= start) plat_get_data_dir(newdir, newlen);
-					else { strncpy(newdir, start, p-start); newdir[p-start] = 0; }
+					while (*p == *PATH_SEP && p > start) p--;
+					while (*p != *PATH_SEP && p > start) p--;
+#ifndef _WIN32 // empty path shows drive letter list
+					if (p <= start) plat_get_data_dir(newdir, newlen); else
+#endif
+					    { strncpy(newdir, start, p-start); newdir[p-start] = 0; }
 				} else {
 					strcpy(newdir, curr_path);
 					p = newdir + strlen(newdir) - 1;
-					while (p >= newdir && *p == '/') *p-- = 0;
-					strcat(newdir, "/");
+					while (p >= newdir && *p == *PATH_SEP) *p-- = 0;
+#ifdef WIN32 // must not prepend the drive letter
+					if (p > newdir)
+#endif
+						strcat(newdir, PATH_SEP);
 					strcat(newdir, namelist[sel]->d_name);
 				}
-				ret = menu_loop_romsel_d(newdir, newlen, filter_exts, extra_filter, draw_prep);
+				ret = menu_loop_romsel_d(newdir, -newlen, filter_exts, extra_filter, draw_prep);
 				free(newdir);
 				break;
 			}
@@ -1194,7 +1209,7 @@ rescan:
 
 	// restore curr_path
 	if (curr_path_restore != NULL)
-		*curr_path_restore = '/';
+		*curr_path_restore = *PATH_SEP;
 
 	return ret;
 }
