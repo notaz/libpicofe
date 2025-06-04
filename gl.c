@@ -285,13 +285,13 @@ void gl_destroy(void)
 	}
 
 	eglMakeCurrent(edpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-	if (ectxt != EGL_NO_CONTEXT) {
-		eglDestroyContext(edpy, ectxt);
-		ectxt = EGL_NO_CONTEXT;
-	}
 	if (esfc != EGL_NO_SURFACE) {
 		eglDestroySurface(edpy, esfc);
 		esfc = EGL_NO_SURFACE;
+	}
+	if (ectxt != EGL_NO_CONTEXT) {
+		eglDestroyContext(edpy, ectxt);
+		ectxt = EGL_NO_CONTEXT;
 	}
 
 	gl_es_surface = (void *)esfc;
