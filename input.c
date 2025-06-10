@@ -994,14 +994,11 @@ int in_config_bind_kbd_key(int dev_id, const char *key, int kbd_key)
 	kc = parse_key(dev, key);
 
 	if (kc < 0 || kc >= dev->key_count) {
-		lprintf("input: bad key: '%s' for device '%s'\n",
+		lprintf("input: config_bind: bad key: '%s' for device '%s'\n",
 			key, dev->name);
 		return -1;
 	}
-
-	dev->kbd_binds[kc] = kbd_key;
-
-	return 0;
+	return in_bind_kbd_key(dev_id, kc, kbd_key);
 }
 
 void in_clean_binds(void)
