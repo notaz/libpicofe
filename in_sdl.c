@@ -525,6 +525,19 @@ static int in_sdl_update(void *drv_data, const int *binds, int *result)
 		mask = state->keystate[i];
 		if (mask == 0)
 			continue;
+		
+		// For GPI case scan code, Start = 0xA7, Select = 0xA6
+		// mask is 4 byte long -> 4 * 8 -> 32 bit
+		// scan code 0xA0 - 0xA7 -> 32 * 5 (0xA0)
+		// Its mask should be 1100 0000b, and index is 5 
+		if (mask == 0xC0 && i == 5)
+		{
+			// Enter menu 
+			result[0] |= 0x2; // 1 << SACTION_ENTER_MENU
+			result[1] |= 0x0;
+			return 0;
+		}
+
 		for (bit = 0; mask != 0; bit++, mask >>= 1) {
 			if ((mask & 1) == 0)
 				continue;
